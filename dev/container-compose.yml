@@ -1,0 +1,99 @@
+version: '3.8'
+
+networks:
+  net: {}
+
+volumes:
+  jenkins-data: {}
+
+services:
+  registry-proxy:
+    image: 192.168.1.82:8444/dev-proxy:latest
+    container_name: dev-proxy
+    build: dev-proxy/.
+    ports:
+      - 8444:8443
+      - 8445:8444
+      - 9080:9080
+      - 8040:8040
+    restart: always
+    networks:
+      - net
+      
+  registry-app:
+    image: docker.io/registry:2
+    container_name: registry-app
+    networks:
+      - net
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/registry.password
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /data
+    volumes:
+      - ~/registry/auth:/auth:Z
+      - ~/registry/data:/data:Z
+
+  registry-ui:
+    image: joxit/docker-registry-ui:main
+    restart: always
+    container_name: registry-ui
+    networks:
+      - net
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Docker Registry UI
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      - NGINX_PROXY_PASS_URL=http://registry-app:5000
+      - SHOW_CATALOG_NB_TAGS=true
+      - CATALOG_MIN_BRANCHES=1
+      - CATALOG_MAX_BRANCHES=1
+      - TAGLIST_PAGE_SIZE=100
+      - REGISTRY_SECURED=false
+      - CATALOG_ELEMENTS_LIMIT=1000
+
+  gitea-app:
+    image: gitea/gitea:1.21.4
+    container_name: gitea-app
+    restart: always
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=gitea-db:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=gitea
+    networks:
+      - net
+    volumes:
+      - ~/gitea/application:/data:Z
+    ports:
+      - "2221:22"
+    depends_on:
+      - gitea-db
+
+  gitea-db:
+    image: postgres:14
+    container_name: gitea-db
+    restart: always
+    environment:
+      - POSTGRES_USER=gitea
+      - POSTGRES_PASSWORD=gitea
+      - POSTGRES_DB=gitea
+    networks:
+      - net
+    volumes:
+      - ~/gitea/database:/var/lib/postgresql/data:Z
+
+  jenkins-app:
+    image: jenkins/jenkins:jdk17
+    container_name: jenkins-app
+    restart: always
+    networks:
+      - net
+    ports:
+      - 50000:50000
+    volumes: 
+      - jenkins-data:/var/jenkins_home 

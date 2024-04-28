@@ -1,0 +1,52 @@
+version: '3'
+
+networks:
+  net: {}
+
+services:
+  app:
+    image: 192.168.1.82:8444/nextcloud-ssl:latest
+    container_name: nextcloud-app
+    build: nextcloud_ssl/.
+    restart: always
+    networks:
+      - net
+    ports:
+      - 9443:443
+    volumes:
+      - ~/nextcloud/application:/var/www/html:Z
+    environment:
+      - MYSQL_PASSWORD=zaq12wsx
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=nextcloud-db
+
+  office:
+    image: onlyoffice/documentserver
+    container_name: nextcloud-office
+    restart: always
+    networks:
+      - net
+    ports:
+      - 8446:443
+      - 8080:80
+    volumes:
+      - ~/onlyoffice/logs:/var/log/onlyoffice:Z
+      - ~/onlyoffice/data:/var/www/onlyoffice/Data:Z
+      - ~/onlyoffice/lib:/var/lib/onlyoffice:Z
+      - ~/onlyoffice/db:/var/lib/postgresql:Z
+
+  db:
+    image: mariadb:latest
+    container_name: nextcloud-db
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    networks:
+      - net
+    volumes:
+      - ~/nextcloud/database:/var/lib/mysql:Z
+    environment:
+      - MYSQL_ROOT_PASSWORD=zaq12wsx
+      - MYSQL_PASSWORD=zaq12wsx
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud

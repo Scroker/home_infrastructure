@@ -1,0 +1,11 @@
+FROM docker.io/nextcloud:latest
+
+RUN a2enmod ssl
+
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/dramiscloud.key -out /etc/ssl/certs/dramiscloud.crt  -subj "/C=IT/ST=Lazio/L=Roma/O=Giorgio Dramis/OU=Giorgio Dramis/CN=server.example.com"
+
+COPY ./default-ssl.conf /etc/apache2/sites-available/default-ssl.conf
+
+RUN a2ensite default-ssl.conf
+
+RUN apache2ctl -t

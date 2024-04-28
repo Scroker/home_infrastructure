@@ -1,0 +1,7 @@
+FROM registry.fedoraproject.org/fedora-minimal
+
+RUN microdnf install -y noip
+
+RUN noip2 -C -u dramisgiorgio@outlook.com -p Seren@1988 -U 30
+
+CMD noip2 start
