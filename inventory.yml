@@ -1,0 +1,8 @@
+gateway:
+  hosts:
+    gtw01:
+      ansible_host: 51.210.241.183
+service:
+  hosts:
+    srv01:
+      ansible_host: 192.168.1.82

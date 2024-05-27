@@ -1,0 +1,9 @@
+wg_interface_address: "10.0.0.1/16, fd00:7::1/64"
+wg_private_key: "CLYUljZkHgSGvDS0exCXthf17aMBY8hU4jVYmQJ8l1A="
+wg_peers:
+- public_key: "A3slhyYSn04JPxw6kyPe/pUcIZd2xwxTjx6g0nh4Zj4="
+  preshared_key: "Tm+OHDqJ2RCVvDSK8zrFXDYIfNDgCABf4lMHSBWYrPI="
+  allowed_ips: "10.0.0.2/32, fd00:7::2/128"
+- public_key: "HiyyNsGSdlbBnrARt9hnREfqoY6lBpjJEcVIQiL27Hk="
+  preshared_key: "yqVphyA4Gy+Lb50hCuDZ5ItSo9oUjnF9wI3hDO8A9ak="
+  allowed_ips: "10.0.1.1/24, fd00:7::1:1/112"

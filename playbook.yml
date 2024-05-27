@@ -1,0 +1,64 @@
+- name: Creating VPN and Reverse Proxy
+  hosts: gateway
+  pre_tasks:
+  - name: Creates the user {{ default_username }}
+    become: true
+    ansible.builtin.user:
+      name: "{{ default_username }}"
+      shell: /bin/bash
+      groups: wheel
+      password: "{{ default_password | password_hash('sha256') }}"  
+  roles:
+  - firewalld
+  - cockpit
+  - wireguard
+  - nginx
+  post_tasks: 
+  - name: Check if the policy internal2public exists
+    command: firewall-cmd --info-policy=internal2public
+    register: policy_check
+    become: true
+    ignore_errors: true
+  
+  - name: Configure firewalld internal2external policy
+    become: true
+    when: policy_check.rc != 0
+    block:
+
+    - name: Convertire le regole di runtime in permanenti
+      command: firewall-cmd --runtime-to-permanent
+
+    - name: Creare una nuova policy internal2public
+      command: firewall-cmd --permanent --new-policy=internal2public
+
+    - name: Impostare il target della policy internal2public su ACCEPT
+      command: firewall-cmd --permanent --policy=internal2public --set-target=ACCEPT
+
+    - name: Ricaricare la configurazione del firewall
+      command: firewall-cmd --reload
+
+    - name: Aggiungere la zona di ingresso internal alla policy internal2public
+      command: firewall-cmd --policy=internal2public --add-ingress-zone=internal
+
+    - name: Aggiungere la zona di uscita external alla policy internal2external
+      command: firewall-cmd --policy=internal2public --add-egress-zone=public
+
+    - name: Convertire le regole di runtime in permanenti
+      command: firewall-cmd --permanent --zone=public --add-forward
+
+- name: Creating container services
+  hosts: service
+  pre_tasks:
+  - name: Creates the user {{ default_username }}
+    become: true
+    ansible.builtin.user:
+      name: "{{ default_username }}"
+      shell: /bin/bash
+      groups: wheel
+      password: "{{ default_password | password_hash('sha256') }}"  
+  roles:
+    - firewalld
+    - cockpit
+    - wireguard
+    - nextcloud
+    

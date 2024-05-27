@@ -1,0 +1,24 @@
+- name: Install and configure nginx server
+  become: true
+  block:
+    - name: Install Nginx
+      ansible.builtin.dnf:
+        name: nginx
+        state: present
+    - name: Start and enable Nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+    - name: Permit traffic on 80 port
+      ansible.posix.firewalld:
+        service: http
+        permanent: true
+        immediate: true
+        state: enabled
+    - name: Permit traffic on 443 port
+      ansible.posix.firewalld:
+        service: https
+        permanent: true
+        immediate: true
+        state: enabled
