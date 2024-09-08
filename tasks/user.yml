@@ -1,0 +1,8 @@
+---
+- name: Creates the user {{ default_username }}
+  become: true
+  ansible.builtin.user:
+    name: "{{ default_username }}"
+    shell: /bin/bash
+    groups: wheel
+    password: "{{ default_password | password_hash('sha256') }}"  

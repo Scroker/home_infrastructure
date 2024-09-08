@@ -1,0 +1,15 @@
+wg_zone: internal
+cockpit_zone: internal
+server_name: vps-bf2bc472.vps.ovh.net
+post_ups:
+  - iptables -A FORWARD -i wg0 -j ACCEPT
+  - iptables -A FORWARD -o wg0 -j ACCEPT
+  - iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+  - ip6tables -A FORWARD -i wg0 -j ACCEPT
+  - ip6tables -A FORWARD -o wg0 -j ACCEPT
+post_downs:
+  - iptables -D FORWARD -i wg0 -j ACCEPT
+  - iptables -D FORWARD -o wg0 -j ACCEPT
+  - iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+  - ip6tables -D FORWARD -i wg0 -j ACCEPT
+  - ip6tables -D FORWARD -o wg0 -j ACCEPT

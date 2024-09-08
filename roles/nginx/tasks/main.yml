@@ -3,19 +3,41 @@
   block:
     - name: Install Nginx
       ansible.builtin.dnf:
-        name: nginx
+        name: 
+          - nginx
+          - certbot
         state: present
+
+    - name : Generate nginix certificate
+      ansible.builtin.command:
+        cmd: >-
+          sudo certbot certonly --standalone --non-interactive --agree-tos 
+          -d vps-bf2bc472.vps.ovh.net 
+          --email tuaemail@example.com
+
     - name: Start and enable Nginx service
-      service:
+      ansible.builtin.service:
         name: nginx
         state: started
         enabled: yes
+    
+    - name: Copy nginx configuration
+      ansible.builtin.template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        owner: root
+        group: root
+        mode: 0644
+      notify: 
+        - Restart nginx
+
     - name: Permit traffic on 80 port
       ansible.posix.firewalld:
         service: http
         permanent: true
         immediate: true
         state: enabled
+    
     - name: Permit traffic on 443 port
       ansible.posix.firewalld:
         service: https

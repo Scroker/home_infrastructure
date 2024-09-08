@@ -1,4 +1,5 @@
----
+- ansible.builtin.import_tasks: sysctl.yml
+
 - name: Install and condfigure wireguard
   become: true
   block:
@@ -23,40 +24,13 @@
       owner: root
       group: root
       mode: '0600'
-
-  - name: Enable and start WireGuard service
-    ansible.builtin.systemd_service:
+    notify:
+      - Restart wireguard service
+  
+  - name: Start wireguard service
+    ansible.builtin.service:
       name: wg-quick@wg0
-      enabled: yes
       state: started
+      enabled: yes
 
-  - name: Permit traffic on wireguard service
-    ansible.posix.firewalld:
-      service: wireguard
-      permanent: true
-      immediate: true
-      state: enabled
-
-  - name: Add wg0 interface to the internal zone
-    ansible.posix.firewalld:
-      interface: wg0
-      zone: internal
-      permanent: yes
-      immediate: true
-      state: enabled
-
-  - name: Enable ipv4 forward
-    ansible.posix.sysctl:
-      name: net.ipv4.ip_forward
-      value: '1'
-      sysctl_set: true
-      state: present
-      reload: true
-
-  - name: Enable ipv6 forward
-    ansible.posix.sysctl:
-      name: net.ipv6.conf.all.forwarding
-      value: '1'
-      sysctl_set: true
-      state: present
-      reload: true
+  - ansible.builtin.import_tasks: firewalld.yml

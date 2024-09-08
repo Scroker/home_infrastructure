@@ -1,0 +1,51 @@
+
+- name: Install and condfigure wireguard
+  become: true
+  block:
+  - name: Permit traffic on wireguard service
+    ansible.posix.firewalld:
+      service: wireguard
+      permanent: true
+      immediate: true
+      state: enabled
+
+  - name: Add wg0 interface to the internal zone
+    ansible.posix.firewalld:
+      interface: wg0
+      zone: '{{ wg_zone }}'
+      permanent: yes
+      immediate: true
+      state: enabled
+    when: wg_zone is defined
+
+  - name: Add masquerade to public zone
+    command: firewall-cmd --add-masquerade --permanent
+    when: wg_zone is not defined
+
+  - name: Check if the policy internal2public exist
+    command: firewall-cmd --info-policy=internal2public
+    register: policy_check
+    when: wg_zone is defined
+    ignore_errors: true
+    
+  - name: Configure firewalld internal2external policy
+    when: policy_check.rc != 0 and wg_zone is defined
+    block:
+
+      - name: Create new internal2public policy
+        command: firewall-cmd --permanent --new-policy=internal2public
+
+      - name: Setup internal2public policy target to ACCEPT
+        command: firewall-cmd --permanent --policy=internal2public --set-target=ACCEPT
+
+      - name: Add internal as ingress zone of internal2public policy
+        command: firewall-cmd --permanent --policy=internal2public --add-ingress-zone=internal
+
+      - name: Add public as ingress zone of internal2external policy
+        command: firewall-cmd --permanent --policy=internal2public --add-egress-zone=public
+
+      - name: Allow the package forward through the public zone
+        command: firewall-cmd --permanent --zone=public --add-forward
+
+      - name: Reload firewalld 
+        command: firewall-cmd --reload
