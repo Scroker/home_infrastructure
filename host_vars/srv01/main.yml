@@ -1,0 +1,34 @@
+wireguard:
+  zone: internal
+  server: false
+  address: "10.0.1.1/24, fd00:7:1::1/64"
+
+cockpit:
+  zones: 
+    - internal
+    - public
+
+nut:
+  enabled_addresses:
+    - host: 127.0.0.1
+      port: 3493
+    - host: 10.0.1.1
+      port: 3493
+  devices:
+    - name: eatonups
+      driver: usbhid-ups
+      description: Eaton 3S 550VA
+      port: auto
+      vendorid: "0463"
+      productid: FFFF
+      serial: Blank
+      product: Eaton 3S
+      vendor: EATON 
+      bus: "001"
+  users:
+    - name: gdramis
+      password: zaq12wsx
+      actions:
+        - SET
+      instcmds:
+        - ALL

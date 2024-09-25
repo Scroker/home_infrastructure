@@ -1,5 +1,12 @@
 ---
-- name: Resta wireguard service
+- name: Restart wireguard service
+  become: true
   ansible.builtin.service:
     name: wg-quick@wg0
+    state: restarted
+
+- name: Restart firewalld service
+  become: true
+  ansible.builtin.service:
+    name: firewalld
     state: restarted

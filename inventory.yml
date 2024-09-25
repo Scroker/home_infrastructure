@@ -1,8 +1,21 @@
-gateway:
+gateways:
   hosts:
     gtw01:
       ansible_host: 51.210.241.183
-service:
+
+services:
   hosts:
     srv01:
-      ansible_host: 192.168.1.82
+      ansible_host: 10.0.1.1
+
+workstations:
+  hosts:
+    dsk01:
+      ansible_host: 10.0.0.2
+    dsk02:
+      ansible_host: 10.0.0.3
+
+ups-servers:
+  children:
+    srv01:
+    dsk02:

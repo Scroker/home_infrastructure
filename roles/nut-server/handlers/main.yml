@@ -1,0 +1,14 @@
+---
+- name: Restart upsdrvctl
+  become: true
+  ansible.builtin.command:
+    cmd: '{{ item }}'
+  loop:
+    - 'upsdrvctl stop'
+    - 'upsdrvctl start'
+
+- name: Restart nut server
+  become: true
+  ansible.builtin.service:
+    name: nut-server
+    state: restarted

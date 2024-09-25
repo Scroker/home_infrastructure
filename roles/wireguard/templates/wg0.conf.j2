@@ -1,19 +1,22 @@
 [Interface]
-Address = {{ wg_interface_address }}
-PrivateKey = {{ wg_private_key }}
-ListenPort = {{ wg_listen_port }}
-{%if post_ups is defined %}
-{% for command in post_ups %}
+Address = {{ wireguard.address }}
+PrivateKey = {{ wireguard.private_key }}
+ListenPort = {{ wireguard.listen_port }}
+{%if wireguard.post_ups is defined %}
+{% for command in wireguard.post_ups %}
 PostUp = {{ command }}
 {% endfor %}
 {% endif %}
-{%if post_downs is defined %}
-{% for command in post_downs %}
+{%if wireguard.post_downs is defined %}
+{% for command in wireguard.post_downs %}
 PostDown = {{ command }}
 {% endfor %}
 {% endif %}
+{% if wireguard.dns_server is defined %}
+DNS = {{ wireguard.dns_server }}
+{% endif %}
 
-{% for peer in wg_peers %}
+{% for peer in wireguard.peers %}
 [Peer]
 PublicKey = {{ peer.public_key }}
 PresharedKey = {{ peer.preshared_key }}

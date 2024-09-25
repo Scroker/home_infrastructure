@@ -33,4 +33,10 @@
       state: started
       enabled: yes
 
+  - name: Check if firewalld is present and running
+    ansible.builtin.service_facts:
+
   - ansible.builtin.import_tasks: firewalld.yml
+    when: >-
+      ansible_facts.services['firewalld.service'].state is defined and
+      ansible_facts.services['firewalld.service'].state == 'running'

@@ -12,26 +12,32 @@
   - name: Add wg0 interface to the internal zone
     ansible.posix.firewalld:
       interface: wg0
-      zone: '{{ wg_zone }}'
+      zone: '{{ wireguard.zone }}'
       permanent: yes
       immediate: true
       state: enabled
-    when: wg_zone is defined
+    when: wireguard.zone is defined
 
   - name: Add masquerade to public zone
     command: firewall-cmd --add-masquerade --permanent
-    when: wg_zone is not defined
+    when: >-
+      wireguard.server == true and
+      wireguard.zone is not defined
 
   - name: Check if the policy internal2public exist
     command: firewall-cmd --info-policy=internal2public
     register: policy_check
-    when: wg_zone is defined
+    when: >-
+      wireguard.server == true and
+      wireguard.zone is defined 
     ignore_errors: true
     
   - name: Configure firewalld internal2external policy
-    when: policy_check.rc != 0 and wg_zone is defined
+    when: >-
+      wireguard.server == true and
+      policy_check.rc != 0 and
+      wireguard.zone is defined 
     block:
-
       - name: Create new internal2public policy
         command: firewall-cmd --permanent --new-policy=internal2public
 
@@ -46,6 +52,5 @@
 
       - name: Allow the package forward through the public zone
         command: firewall-cmd --permanent --zone=public --add-forward
-
-      - name: Reload firewalld 
-        command: firewall-cmd --reload
+    notify:
+      - Restart firewalld service
