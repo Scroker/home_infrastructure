@@ -1,3 +1,6 @@
+.vscode
+.context
+.ansible
 vault.yml
 vault_psk
 inventory.yml
