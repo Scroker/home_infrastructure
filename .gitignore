@@ -1,6 +1,8 @@
 .vscode
 .context
 .ansible
+.vault_pass
+
 secrets.yml
 vault_psk
 inventory.yml

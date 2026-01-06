@@ -1,33 +1,16 @@
-nginx:
-  server_name: vps-bf2bc472.vps.ovh.net
-  email: dramisgiorgio@outlook.com
-  sities:
-    - name: dramiscloud.zapto.org
-      redirect: http://10.0.1.1:9443
-      filename: dramiscloud.conf
-      email: dramisgiorgio@outlook.com
-    - name: dramisassistant.zapto.org
-      redirect: http://10.0.1.1:8123
-      filename: dramisassistant.conf
-      email: dramisgiorgio@outlook.com
-
 wireguard:
+  connection_name: private-net
   zone: internal
-  server: ture
-  address: "10.0.0.0/24, fd00:7::/64"
   ipv4subnet: "10.0.0.0/24"
   ipv6subnet: "fd00:7::/64"
+  ipv4_forwarding_needed: true
+  ipv6_forwarding_needed: true
   port: 51820
   clients:
-    - name: localhost
+    - name: cli01
       ipv4subnet: 10.0.0.1/32
       ipv6subnet: fd00:7::1/127
-
   dns_server: 127.0.0.1
-
-cockpit:
-  zones: 
-    - internal
 
 dnsmasq:
   zone: internal

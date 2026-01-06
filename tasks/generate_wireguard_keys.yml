@@ -13,6 +13,7 @@
     wg genkey
   register: private_key_generation
   delegate_to: localhost
+  changed_when: true
 
 - name: Save Private Key to output file
   ansible.builtin.copy:
@@ -27,6 +28,7 @@
     echo "{{ private_key_generation.stdout }}"| wg pubkey
   register: public_key_generation
   delegate_to: localhost
+  changed_when: true
 
 - name: Save Public Key to output file
   ansible.builtin.copy:

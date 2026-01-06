@@ -19,23 +19,40 @@
       ansible.builtin.lineinfile:
         path: /etc/sysctl.conf
         line: net.ipv4.ip_forward = 1
+      notify:
+        - Reload sysctl
+      when: >-
+        ansible_facts.os_family == "RedHat" and
+        ipv4_forwarding_needed | default(false)
 
-    - name: Allow ipv4 forward
+    - name: Allow ipv6 forward
       ansible.builtin.lineinfile:
         path: /etc/sysctl.conf
         line: net.ipv6.conf.all.forwarding = 1
       notify:
         - Reload sysctl
+      when: >-
+        ansible_facts.os_family == "RedHat" and
+        ipv6_forwarding_needed | default(false)
 
     - name: Create private key fact
       ansible.builtin.set_fact:
         wireguard_private_key: "{{ lookup('file', wireguard_private_key_file) | trim }}"
 
+    - name: Rimuovi la connessione WireGuard esistente
+      community.general.nmcli:
+        conn_name: "{{ wireguard.connection_name | default(wireguard_connection_name) }}"
+        state: absent
+      become: true
+      register: wireguard_nmcli_remove
+      failed_when:
+        - wireguard_nmcli_remove.failed | default(false)
+
     - name: Create a wireguard connection
       community.general.nmcli:
         type: wireguard
-        conn_name: "{{ wireguard_connection_name }}"
-        ifname: "{{ wireguard_interface_name }}"
+        conn_name: "{{ wireguard.connection_name | default(wireguard_connection_name) }}"
+        ifname: "{{ wireguard.interface_name | default(wireguard_interface_name) }}"
         ip4: "{{ wireguard.ipv4subnet }}"
         ip6: "{{ wireguard.ipv6subnet }}"
         zone: "{{ wireguard.zone }}"
@@ -47,25 +64,20 @@
       notify:
         - Activate WireGuard connection
 
-    - name: Trova tutti i file con suffisso _key (per identificare i prefissi)
-      ansible.builtin.find:
-        paths: "{{ wireguard_target_dir }}/"
-        patterns: "*_key"
-        file_type: file
-      register: wireguard_found_keys
-      delegate_to: localhost
-
     - name: Leggi e registra entrambi i contenuti nella lista finale
       ansible.builtin.set_fact:
         wireguard_key_pair_contents: >
           {{ wireguard_key_pair_contents + [{
-            'prefix': item.path | basename | regex_replace('_key$', ''),
-            'private_key': lookup('ansible.builtin.file', item.path),
-            'public_key': lookup('ansible.builtin.file', item.path | regex_replace('_key$', '_pub'))
+            'prefix': item.name ,
+            'private_key': lookup('ansible.builtin.file', wireguard_target_dir + "/" + item.name + '_key'),
+            'public_key': lookup('ansible.builtin.file', wireguard_target_dir + "/" + item.name + '_pub'),
+            'ipv4subnet': item.ipv4subnet,
+            'ipv6subnet': item.ipv6subnet,
+            'endpoint': item.endpoint | default(omit)
           }] }}
-      loop: "{{ wireguard_found_keys.files }}"
+      loop: "{{ wireguard.clients }}"
       loop_control:
-        label: "Processing {{ item.path | basename }}"
+        label: "Processing {{ item.name }}"
       delegate_to: localhost
 
     - name: Filtra la lista degli hostname esclusi
@@ -78,14 +90,17 @@
 
     - name: Accoda il blocco di configurazione del nuovo peer
       ansible.builtin.blockinfile:
-        path: /etc/NetworkManager/system-connections/{{ wireguard_connection_name }}.nmconnection
+        path: /etc/NetworkManager/system-connections/{{ wireguard.connection_name | default(wireguard_connection_name) }}.nmconnection
         block: |
           [wireguard-peer.{{ item.public_key }}]
+          {% if item.endpoint is defined and item.endpoint -%}
+          endpoint={{ item.endpoint }}
+          {% endif -%}
           persistent-keepalive=30
-          allowed-ips=10.0.0.1/32
+          allowed-ips={{ item.ipv4subnet }};{{ item.ipv6subnet }};
         insertafter: EOF
         create: false
-      loop: "{{ wireguard_other_hostnames_list }}"
+      loop: "{{ wireguard_key_pair_contents }}"
       loop_control:
         index_var: peer_index
         label: "Adding Peer {{ item.prefix }}"

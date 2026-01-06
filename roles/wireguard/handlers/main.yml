@@ -7,11 +7,13 @@
 - name: Reload NetworkManager connection
   ansible.builtin.command:
     cmd: nmcli connection reload
+  become: true
   changed_when: true
 
 - name: Activate WireGuard connection
   ansible.builtin.command:
-    cmd: nmcli connection up {{ wireguard_connection_name }}
+    cmd: nmcli connection up {{ wireguard.connection_name | default(wireguard_connection_name) }}
+  become: true
   changed_when: true
 
 - name: Reload sysctl

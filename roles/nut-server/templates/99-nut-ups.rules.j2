@@ -1,7 +1,0 @@
-SUBSYSTEM!="usb", GOTO="nut-usbups_rules_end"
-
-{% for ups in nut.devices %}
-ACTION=="add|change", SUBSYSTEM=="usb|usb_device", SUBSYSTEMS=="usb|usb_device", ATTR{idVendor}=="{{ ups.vendorid }}", ATTR{idProduct}=="{{ ups.productid }}", MODE="664", GROUP="nut", RUN+="/sbin/upsdrvctl stop; /sbin/upsdrvctl start"
-{% endfor %}
-
-LABEL="nut-usbups_rules_end"
