@@ -7,4 +7,4 @@ secrets.yml
 vault_psk
 inventory.yml
 inventory
-generated_key/*
+generated_keys/*
