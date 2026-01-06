@@ -1,28 +1,15 @@
+- name: Generate wireguard keys
+  hosts: gateway, localhost
+  gather_facts: true
+  tasks:
+    - name: Generate wireguard keys
+      ansible.builtin.import_tasks: tasks/generate_wireguard_keys.yml
+
 - name: Setup VPN and Reverse Proxy
   hosts: gateway
   pre_tasks:
-    - ansible.builtin.import_tasks: tasks/user.yml
+    - name: Create users
+      ansible.builtin.import_tasks: tasks/user.yml
   roles:
-    - firewalld
-    - cockpit
-    - dnsmasq
-    - wireguard
-    - nginx
-
-- name: Setup container runtime
-  hosts: servers
-  roles:
-    - nut-server
-    - firewalld
     - cockpit
     - wireguard
-
-- name: Setup container runtime
-  hosts: workstations
-  roles:
-    - wireguard
-
-- name: Setup desktop environment
-  hosts: ups-servers
-  roles:
-    - nut-server

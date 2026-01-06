@@ -1,42 +1,105 @@
-- ansible.builtin.import_tasks: sysctl.yml
+# - ansible.builtin.import_tasks: sysctl.yml
 
 - name: Install and condfigure wireguard
   become: true
+  vars:
+    wireguard_private_key_file: "{{ wireguard_target_dir }}/{{ inventory_hostname }}_key"
+    wireguard_key_pair_contents: []
+
   block:
-  - name: Install wireguard
-    ansible.builtin.dnf:
-      name:
-        - wireguard-tools
-      state: present
 
-  - name: Ensure /etc/wireguard directory exists
-    ansible.builtin.file:
-      path: /etc/wireguard
-      state: directory
-      owner: root
-      group: root
-      mode: '0700'
+    - name: Install wireguard and other tools
+      ansible.builtin.dnf:
+        name:
+          - wireguard-tools
+          - python3-firewall
+        state: present
 
-  - name: Configure WireGuard interface
-    ansible.builtin.template:
-      src: templates/wg0.conf.j2
-      dest: /etc/wireguard/wg0.conf
-      owner: root
-      group: root
-      mode: '0600'
-    notify:
-      - Restart wireguard service
-  
-  - name: Start wireguard service
-    ansible.builtin.service:
-      name: wg-quick@wg0
-      state: started
-      enabled: yes
+    - name: Allow ipv4 forward
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: net.ipv4.ip_forward = 1
 
-  - name: Check if firewalld is present and running
-    ansible.builtin.service_facts:
+    - name: Allow ipv4 forward
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        line: net.ipv6.conf.all.forwarding = 1
+      notify:
+        - Reload sysctl
 
-  - ansible.builtin.import_tasks: firewalld.yml
-    when: >-
-      ansible_facts.services['firewalld.service'].state is defined and
-      ansible_facts.services['firewalld.service'].state == 'running'
+    - name: Create private key fact
+      ansible.builtin.set_fact:
+        wireguard_private_key: "{{ lookup('file', wireguard_private_key_file) | trim }}"
+
+    - name: Create a wireguard connection
+      community.general.nmcli:
+        type: wireguard
+        conn_name: "{{ wireguard_connection_name }}"
+        ifname: "{{ wireguard_interface_name }}"
+        ip4: "{{ wireguard.ipv4subnet }}"
+        ip6: "{{ wireguard.ipv6subnet }}"
+        zone: "{{ wireguard.zone }}"
+        wireguard:
+          listen-port: "{{ wireguard.port }}"
+          private-key: "{{ wireguard_private_key }}"
+        autoconnect: true
+        state: present
+      notify:
+        - Activate WireGuard connection
+
+    - name: Trova tutti i file con suffisso _key (per identificare i prefissi)
+      ansible.builtin.find:
+        paths: "{{ wireguard_target_dir }}/"
+        patterns: "*_key"
+        file_type: file
+      register: wireguard_found_keys
+      delegate_to: localhost
+
+    - name: Leggi e registra entrambi i contenuti nella lista finale
+      ansible.builtin.set_fact:
+        wireguard_key_pair_contents: >
+          {{ wireguard_key_pair_contents + [{
+            'prefix': item.path | basename | regex_replace('_key$', ''),
+            'private_key': lookup('ansible.builtin.file', item.path),
+            'public_key': lookup('ansible.builtin.file', item.path | regex_replace('_key$', '_pub'))
+          }] }}
+      loop: "{{ wireguard_found_keys.files }}"
+      loop_control:
+        label: "Processing {{ item.path | basename }}"
+      delegate_to: localhost
+
+    - name: Filtra la lista degli hostname esclusi
+      ansible.builtin.set_fact:
+        wireguard_other_hostnames_list: >
+          {{ wireguard_key_pair_contents
+             | rejectattr('prefix', 'equalto', inventory_hostname)
+             | list
+          }}
+
+    - name: Accoda il blocco di configurazione del nuovo peer
+      ansible.builtin.blockinfile:
+        path: /etc/NetworkManager/system-connections/{{ wireguard_connection_name }}.nmconnection
+        block: |
+          [wireguard-peer.{{ item.public_key }}]
+          persistent-keepalive=30
+          allowed-ips=10.0.0.1/32
+        insertafter: EOF
+        create: false
+      loop: "{{ wireguard_other_hostnames_list }}"
+      loop_control:
+        index_var: peer_index
+        label: "Adding Peer {{ item.prefix }}"
+      notify:
+        - Reload NetworkManager connection
+
+    - name: Permit traffic on wireguard service
+      ansible.posix.firewalld:
+        service: wireguard
+        permanent: true
+        immediate: true
+        state: enabled
+      when: >-
+        ansible_facts.services['firewalld.service'].state is defined and
+        ansible_facts.services['firewalld.service'].state == 'running'
+      notify:
+        - Restart firewalld service

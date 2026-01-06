@@ -2,6 +2,7 @@
 - name: Install and configure Network UPS tools
   become: true
   block:
+
     - name: Install required software
       ansible.builtin.dnf:
         name:
@@ -12,7 +13,7 @@
           - neon-devel
           - avahi-devel
           - freeipmi-devel
-        state: latest
+        state: present
 
     - name: Apply ups.conf template
       ansible.builtin.template:
@@ -20,11 +21,11 @@
         dest: /etc/ups/ups.conf
         owner: root
         group: nut
-        mode: 0640
+        mode: "0640"
       notify:
         - Restart upsdrvctl
         - Restart nut server
-    
+
     - name: Start NUT server
       ansible.builtin.service:
         name: nut-server
@@ -37,30 +38,30 @@
         line: LISTEN {{ item.host }} {{ item.port }}
         owner: root
         group: nut
-        mode: 0640
+        mode: "0640"
       loop: '{{ nut.enabled_addresses }}'
       notify:
         - Restart upsdrvctl
         - Restart nut server
-    
+
     - name: Configure users
       ansible.builtin.template:
         src: upsd.users.j2
         dest: /etc/ups/upsd.users
         owner: root
         group: nut
-        mode: 0640
+        mode: "0640"
       notify:
         - Restart upsdrvctl
         - Restart nut server
-    
+
     - name: Configure udev rules
       ansible.builtin.template:
         src: 99-nut-ups.rules.j2
         dest: /etc/udev/rules.d/99-nut-ups.rules
         owner: root
         group: root
-        mode: 0644
+        mode: "0644"
       notify:
         - Restart upsdrvctl
         - Restart nut server

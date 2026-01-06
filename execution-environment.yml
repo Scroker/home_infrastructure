@@ -7,6 +7,7 @@ dependencies:
   system:
   - openssh-clients
   - sshpass
+  - wireguard-tools
   ansible_core:
     package_pip: ansible-core
   ansible_runner:
@@ -16,5 +17,6 @@ dependencies:
     - name: ansible.posix
     - name: containers.podman
     - name: community.general
+    - name: community.crypto
   python:
     - passlib

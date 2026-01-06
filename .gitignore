@@ -1,7 +1,8 @@
 .vscode
 .context
 .ansible
-vault.yml
+secrets.yml
 vault_psk
 inventory.yml
 inventory
+generated_key/*

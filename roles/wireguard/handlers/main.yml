@@ -1,12 +1,25 @@
 ---
-- name: Restart wireguard service
-  become: true
+- name: Reload NetworkManager
   ansible.builtin.service:
-    name: wg-quick@wg0
-    state: restarted
+    name: NetworkManager
+    state: reloaded
+
+- name: Reload NetworkManager connection
+  ansible.builtin.command:
+    cmd: nmcli connection reload
+  changed_when: true
+
+- name: Activate WireGuard connection
+  ansible.builtin.command:
+    cmd: nmcli connection up {{ wireguard_connection_name }}
+  changed_when: true
+
+- name: Reload sysctl
+  ansible.builtin.command:
+    cmd: sysctl -p
+  changed_when: true
 
 - name: Restart firewalld service
-  become: true
   ansible.builtin.service:
     name: firewalld
     state: restarted

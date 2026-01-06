@@ -1,0 +1,36 @@
+---
+
+- name: Create generated_keys directory on localhost
+  ansible.builtin.file:
+    path: "./generated_keys"
+    state: directory
+    mode: '0700'
+  delegate_to: localhost
+  run_once: true
+
+- name: Generate WireGuard Private Key
+  ansible.builtin.shell: |
+    wg genkey
+  register: private_key_generation
+  delegate_to: localhost
+
+- name: Save Private Key to output file
+  ansible.builtin.copy:
+    content: "{{ private_key_generation.stdout }}"
+    dest: "./generated_keys/{{ inventory_hostname }}_key"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Calculate WireGuard Public Key
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "{{ private_key_generation.stdout }}"| wg pubkey
+  register: public_key_generation
+  delegate_to: localhost
+
+- name: Save Public Key to output file
+  ansible.builtin.copy:
+    content: "{{ public_key_generation.stdout }}"
+    dest: "./generated_keys/{{ inventory_hostname }}_pub"
+    mode: '0644'
+  delegate_to: localhost
