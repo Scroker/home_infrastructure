@@ -3,8 +3,7 @@
 .ansible
 .vault_pass
 
-secrets.yml
-vault_psk
+vault.yml
 inventory.yml
 inventory
-generated_keys/*
+generated_keys
