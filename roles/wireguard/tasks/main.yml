@@ -64,6 +64,21 @@
       notify:
         - Activate WireGuard connection
 
+    - name: Modifica configurazione DNS senza alterare i permessi
+      community.general.ini_file:
+        path: /etc/NetworkManager/system-connections/{{ wireguard.connection_name | default(wireguard_connection_name) }}.nmconnection
+        section: ipv4
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        state: present
+        mode: "0600"
+        no_extra_spaces: true
+      loop:
+        - { option: 'dns', value: '{{ wireguard.dns_server }}' }
+        - { option: 'dns-priority', value: '-1' }
+        - { option: 'ignore-auto-dns', value: 'true' }
+      when: wireguard.dns_server is defined
+
     - name: Leggi e registra entrambi i contenuti nella lista finale
       ansible.builtin.set_fact:
         wireguard_key_pair_contents: >

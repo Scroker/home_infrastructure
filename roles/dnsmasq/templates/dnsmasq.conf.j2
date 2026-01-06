@@ -1,13 +1,19 @@
 {% if dnsmasq.addresses is defined %}
 {% for conf in dnsmasq.addresses %}
-address=/{{ conf.dns_address }}/{{ conf.ip_address }}
+address=/{{ conf.fqdn }}/{{ conf.ip }}
 {% endfor %}
 {% endif %}
 {% if dnsmasq.cache_size is defined %}
-cache_size={{  dnsmasq.cache_size }}
+cache_size={{ dnsmasq.cache_size }}
 {% endif %}
 {% if dnsmasq.external_dns is defined %}
 {% for external_dns in dnsmasq.external_dns %}
 server={{ external_dns }}
 {% endfor %}
+{% endif %}
+{% if dnsmasq.interfaces is defined %}
+{% for interface in dnsmasq.interfaces %}
+interface={{ interface }}
+{% endfor %}
+bind-interfaces
 {% endif %}

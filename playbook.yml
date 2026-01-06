@@ -6,3 +6,8 @@
       ansible.builtin.import_tasks: tasks/generate_wireguard_keys.yml
   roles:
     - wireguard
+
+- name: Setup dnsmasq service
+  hosts: gtw01
+  roles:
+    - dnsmasq
