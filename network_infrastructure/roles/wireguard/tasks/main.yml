@@ -10,9 +10,7 @@
 
     - name: Install wireguard and other tools
       ansible.builtin.dnf:
-        name:
-          - wireguard-tools
-          - python3-firewall
+        name: wireguard-tools
         state: present
 
     - name: Allow ipv4 forward

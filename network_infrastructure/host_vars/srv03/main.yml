@@ -1,0 +1,4 @@
+hostname: server03
+
+cockpit:
+  zone: internal
