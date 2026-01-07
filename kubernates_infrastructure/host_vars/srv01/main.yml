@@ -1,0 +1,3 @@
+vpn_ip: "10.0.0.2"
+pod_network_cidr: "10.244.0.0/16"
+hostname: server01.private

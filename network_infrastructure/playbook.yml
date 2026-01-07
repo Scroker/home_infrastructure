@@ -1,3 +1,4 @@
+---
 - name: Setup VPN and Reverse Proxy
   hosts: gateway, client, server
   gather_facts: true
