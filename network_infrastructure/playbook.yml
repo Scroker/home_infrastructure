@@ -1,5 +1,5 @@
 - name: Setup VPN and Reverse Proxy
-  hosts: gateway, client
+  hosts: gateway, client, server
   gather_facts: true
   pre_tasks:
     - name: Generate wireguard keys

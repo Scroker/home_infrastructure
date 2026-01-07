@@ -106,6 +106,7 @@
     - name: Accoda il blocco di configurazione del nuovo peer
       ansible.builtin.blockinfile:
         path: /etc/NetworkManager/system-connections/{{ wireguard.connection_name | default(wireguard_connection_name) }}.nmconnection
+        marker: "# {mark} ANSIBLE MANAGED PEER {{ item.prefix }}"
         block: |
           [wireguard-peer.{{ item.public_key }}]
           {% if item.endpoint is defined and item.endpoint -%}
