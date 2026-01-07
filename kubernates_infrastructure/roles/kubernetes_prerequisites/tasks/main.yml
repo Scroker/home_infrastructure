@@ -1,0 +1,94 @@
+---
+
+- name: Install and configure Cri-o
+  become: true
+  block:
+
+    - name: Install required packages
+      ansible.builtin.dnf:
+        name:
+          - cri-o
+          - cri-tools
+          - containernetworking-plugins
+          - kubernetes
+        state: present
+
+    - name: Create /etc/modules-load.d/crio.conf file
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/crio.conf
+        content: |
+          overlay
+          br_netfilter
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Modprobe br_netfilter
+      community.general.modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - overlay
+        - br_netfilter
+
+    - name: Copia la configurazione sysctl completa
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-kubernetes-cri.conf
+        content: |
+          net.bridge.bridge-nf-call-iptables  = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward                 = 1
+          net.ipv6.conf.all.forwarding        = 1
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable and start Cri-o service
+      ansible.builtin.systemd:
+        name: crio
+        enabled: true
+        state: started
+
+    - name: Enable and start Cri-o service
+      ansible.builtin.systemd:
+        name: kubelet
+        enabled: true
+        state: started
+
+    - name: Disabilita la swap immediatamente (runtime)
+      ansible.builtin.command: swapoff -a
+      # Esegue il comando solo se la swap è effettivamente attiva
+      when: ansible_swaptotal_mb > 0
+      changed_when: true
+
+    - name: Ensure swap is disabled on boot
+      ansible.builtin.file:
+        path: /etc/systemd/zram-generator.conf
+        state: touch
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_swaptotal_mb > 0
+
+    - name: Rimuove eventuali partizioni swap da /etc/fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+.*)$'
+        replace: '# \1'
+
+    - name: Crea la cartella .kube nella home dell'utente
+      ansible.builtin.file:
+        path: /home/{{ ansible_user }}/.kube
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copia le configurazioni di default nella cartella
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/{{ ansible_user }}/.kube/config/
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+      when: ansible_facts['os_family'] == "RedHat"

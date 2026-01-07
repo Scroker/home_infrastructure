@@ -1,9 +1,0 @@
-.vscode
-.context
-.ansible
-.vault_pass
-
-vault.yml
-inventory.yml
-inventory
-generated_keys

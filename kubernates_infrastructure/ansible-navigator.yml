@@ -1,0 +1,9 @@
+ansible-navigator:
+  playbook-artifact:
+    enable: false
+  mode: stdout
+  execution-environment:
+    image: localhost/fedora_ee
+    enabled: true
+    pull:
+      policy: missing

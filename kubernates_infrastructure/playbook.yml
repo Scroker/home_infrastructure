@@ -1,0 +1,16 @@
+---
+
+- name: Intstall Cri-O and Kubernates
+  hosts: server
+  roles:
+    - kubernetes_prerequisites
+
+- name: Setup Kubernetes Infrastructure
+  hosts: srv01
+  roles:
+    - kubernetes_control_plane
+
+- name: Setup Kubernetes Infrastructure
+  hosts: srv02, srv03
+  roles:
+    - kubernetes_node
