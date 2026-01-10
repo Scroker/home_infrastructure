@@ -7,3 +7,4 @@ vault.yml
 inventory.yml
 inventory
 generated_keys
+ansible_navigator.log
