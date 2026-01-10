@@ -1,9 +1,6 @@
 ---
-
 - name: Install and configure Cri-o and Kubernetes
-  become: true
   block:
-
     - name: Install required packages
       ansible.builtin.dnf:
         name:
@@ -93,4 +90,24 @@
         - { option: 'network_dir', value: '"/etc/cni/net.d"' }
         - { option: 'plugin_dirs', value: '["/usr/libexec/cni","/opt/cni/bin"]' }
       notify:
-        - Restart Cri-o service
+        - Restart crio
+
+    - name: Change the cri-o network configurations
+      ansible.builtin.ini_file:
+        path: /etc/crio/crio.conf
+        section: "crio.runtime"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        state: present
+        mode: "0644"
+      loop:
+        - { option: 'conmon_cgroup', value: '"pod"' }
+        - { option: 'cgroup_manager', value: '"systemd"' }
+      notify:
+        - Restart crio
+
+    - name: Disable firewalld service
+      ansible.builtin.systemd:
+        name: firewalld
+        enabled: false
+        state: stopped

@@ -18,5 +18,7 @@ dependencies:
     - name: containers.podman
     - name: community.general
     - name: community.crypto
+    - name: kubernetes.core
+    - name: fedora.linux_system_roles
   python:
     - passlib

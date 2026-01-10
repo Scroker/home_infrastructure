@@ -1,11 +1,11 @@
 ---
-- name: Start dnsmasq service
+- name: Start dnsmasq
   ansible.builtin.service:
     name: dnsmasq
     enabled: true
     state: started
 
-- name: Restart dnsmasq service
+- name: Restart dnsmasq
   ansible.builtin.service:
     name: dnsmasq
     state: restarted

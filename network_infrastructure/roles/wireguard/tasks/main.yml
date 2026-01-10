@@ -131,4 +131,4 @@
         ansible_facts.services['firewalld.service'].state is defined and
         ansible_facts.services['firewalld.service'].state == 'running'
       notify:
-        - Restart firewalld service
+        - Restart firewalld

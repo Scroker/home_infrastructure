@@ -10,7 +10,7 @@
         name: dnsmasq
         state: present
       notify:
-        - Start dnsmasq service
+        - Start dnsmasq
 
     - name: Apply dnsmasq config template
       ansible.builtin.template:
@@ -20,7 +20,7 @@
         group: root
         mode: "0644"
       notify:
-        - Restart dnsmasq service
+        - Restart dnsmasq
 
     - name: Disable systemd-resolved service
       ansible.builtin.service:

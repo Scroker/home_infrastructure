@@ -1,4 +1,26 @@
 ---
+- name: General server setup
+  hosts: gateway, server
+  pre_tasks:
+
+    - name: Imposta il nuovo hostname
+      ansible.builtin.hostname:
+        name: "{{ hostname }}.private"
+
+    - name: Imposta l'hostname Pretty
+      ansible.builtin.command:
+        cmd: "hostnamectl set-hostname --pretty '{{ hostname }}'"
+      changed_when: true
+
+    - name: Aggiorna il file /etc/hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: "127.0.1.1 {{ hostname }}.private"
+        owner: root
+        group: root
+        mode: '0644'
+
 - name: Setup VPN and Reverse Proxy
   hosts: gateway, client, server
   gather_facts: true
@@ -7,39 +29,6 @@
       ansible.builtin.import_tasks: tasks/generate_wireguard_keys.yml
   roles:
     - wireguard
-
-- name: General server setup
-  hosts: gateway, server
-  pre_tasks:
-
-    - name: Imposta il nuovo hostname
-      ansible.builtin.hostname:
-        name: "{{ hostname }}"
-
-    - name: Aggiorna il file /etc/hosts
-      ansible.builtin.lineinfile:
-        path: /etc/hosts
-        regexp: '^127\.0\.1\.1'
-        line: "127.0.1.1 {{ hostname }}"
-        owner: root
-        group: root
-        mode: '0644'
-
-    - name: Apre la porta SSH nel firewall
-      ansible.posix.firewalld:
-        service: cockpit
-        zone: "{{ cockpit.zone }}"
-        permanent: true
-        state: enabled
-        immediate: true
-
-    - name: Remove Cockpit from public access
-      ansible.posix.firewalld:
-        service: cockpit
-        zone: public
-        permanent: true
-        state: disabled
-        immediate: true
 
 - name: Setup dnsmasq service
   hosts: gtw01

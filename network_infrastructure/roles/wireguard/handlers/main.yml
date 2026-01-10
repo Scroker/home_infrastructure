@@ -17,7 +17,7 @@
   become: true
   changed_when: true
 
-- name: Restart firewalld service
+- name: Restart firewalld
   ansible.builtin.service:
     name: firewalld
     state: restarted

@@ -1,0 +1,10 @@
+---
+- name: Restart crio
+  ansible.builtin.systemd:
+    name: crio
+    state: restarted
+
+- name: Restart kubelet
+  ansible.builtin.systemd:
+    name: kubelet
+    state: restarted

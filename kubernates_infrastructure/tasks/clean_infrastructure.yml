@@ -1,0 +1,63 @@
+---
+- name: Reset Kubernate node
+  ansible.builtin.command: |
+    kubeadm reset -f
+  changed_when: true
+
+- name: Stop kubectl and crio services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+  loop:
+    - crio
+    - kubelet
+
+- name: Remove iptables rules
+  ansible.builtin.command: >-
+      iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X
+  failed_when: false
+  register: kube_master_command_result
+  changed_when: kube_master_command_result.rc == 0
+
+- name: Remove network interfaces if they exist
+  ansible.builtin.command:
+    cmd: "ip link delete {{ item }}"
+  loop:
+    - cni0
+    - flannel.1
+  failed_when: false
+  register: kube_master_command_result
+  changed_when: kube_master_command_result.rc == 0
+
+- name: Remove configuration and data files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/cni/networks/cbr0/*
+    - /etc/cni/net.d/*
+    - /etc/kubernetes/admin.conf
+    - /etc/kubernetes/kubelet
+    - /etc/kubernetes/controller-manager.conf
+    - /etc/kubernetes/kubelet.conf
+    - /etc/kubernetes/pki
+    - /etc/kubernetes/scheduler.conf
+    - /etc/kubernetes/super-admin.conf
+    - /var/lib/etcd
+    - /var/lib/kubelet
+    - /var/lib/cni
+    - /etc/cni
+
+- name: Remove user directory .kube
+  become: false
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: absent
+
+- name: Start kubectl and crio services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+  loop:
+    - crio
+    - kubelet

@@ -1,0 +1,104 @@
+- name: Configuration of the Kubernetes Control Plane
+  block:
+
+    - name: Inizializzazione del Cluster Kubernetes
+      ansible.builtin.command: >-
+        kubeadm init
+          --apiserver-advertise-address={{ vpn_ip }}
+          --apiserver-cert-extra-sans={{ vpn_ip }}
+          --pod-network-cidr={{ pod_network_cidr }}
+          --cri-socket=unix:///var/run/crio/crio.sock
+      changed_when: true
+      register: kube_master_output
+
+    - name: Crea la cartella .kube nella home dell'utente
+      ansible.builtin.file:
+        path: /home/{{ ansible_user }}/.kube
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copia admin.conf
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "/home/{{ ansible_user }}/.kube/config"
+        remote_src: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+    - name: Configure extra args for kubelet
+      ansible.builtin.lineinfile:
+        path: /etc/kubernetes/kubelet
+        regexp: '^KUBELET_EXTRA_ARGS='
+        line: 'KUBELET_EXTRA_ARGS=--node-ip={{ vpn_ip }} --cgroup-driver=systemd'
+        create: true
+        mode: '0644'
+        owner: root
+        group: root
+      notify:
+        - Restart kubelet
+
+    - name: Installazione del Network Plugin (Flannel)
+      become: false
+      ansible.builtin.command: |
+        kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+      changed_when: true
+
+    - name: Forza Flannel a usare l'interfaccia Wireguard
+      become: false
+      ansible.builtin.command: |
+        kubectl patch ds kube-flannel-ds
+          -n kube-flannel
+          --type='json'
+          -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--iface={{ vpn_interface }}"}]'
+      changed_when: true
+
+    - name: Create the flannel conflist file
+      ansible.builtin.template:
+        src: 10-flannel.conflist.j2
+        dest: /etc/cni/net.d/10-flannel.conflist
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Restart crio
+        - Restart kubelet
+
+    - name: Create the CoreDNS ConfigMap
+      ansible.builtin.template:
+        src: templates/coredns-configmap.yml.j2
+        dest: /tmp/coredns-rendered.yaml
+        mode: '0644'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Apply the coredns ConfigMap
+      become: false
+      ansible.builtin.command:
+        cmd: "kubectl apply -f /tmp/coredns-rendered.yaml --overwrite"
+      changed_when: true
+
+    - name: Abbatti interfaccia cni0
+      notify:
+        - Restart crio
+        - Restart kubelet
+        - Restart coredns
+      block:
+        - name: Porta giù interfaccia cni0
+          ansible.builtin.command:
+            cmd: ip link set cni0 down
+          failed_when: false
+          register: kube_master_command_result
+          changed_when: kube_master_command_result.rc == 0
+
+        - name: Remove network interfaces if they exist
+          ansible.builtin.command:
+            cmd: "ip link delete {{ item }}"
+          loop:
+            - cni0
+            - flannel.1
+          failed_when: false
+          register: kube_master_command_result
+          changed_when: kube_master_command_result.rc == 0

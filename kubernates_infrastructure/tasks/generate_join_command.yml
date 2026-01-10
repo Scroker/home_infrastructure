@@ -1,0 +1,12 @@
+---
+- name: Gestione comando di join sul Master
+  block:
+    - name: Genera il comando di join
+      ansible.builtin.command: kubeadm token create --print-join-command
+      register: kube_master_join_command_raw
+      changed_when: false
+
+
+    - name: Imposta il comando di join come fact
+      ansible.builtin.set_fact:
+        kube_master_join_command: "{{ kube_master_join_command_raw.stdout }}"

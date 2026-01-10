@@ -1,0 +1,58 @@
+---
+- name: Install Istio using Helm charts
+  hosts: cli01
+  tasks:
+    - name: Add Istio chart repo
+      ansible.builtin.command: >-
+          helm repo add istio
+          https://istio-release.storage.googleapis.com/charts
+          --kubeconfig={{ kubeconfig_path }}
+      changed_when: true
+      delegate_to: localhost
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: "helm repo update --kubeconfig={{ kubeconfig_path }}"
+      changed_when: true
+      delegate_to: localhost
+
+    - name: Create istio-system namespace
+      ansible.builtin.command:
+        cmd: "kubectl create namespace istio-system --kubeconfig={{ kubeconfig_path }}"
+      register: ns_system_result
+      failed_when: false
+      changed_when: true
+      delegate_to: localhost
+
+    - name: Deploy istio-base
+      ansible.builtin.command: >-
+          helm upgrade --install istio-base istio/base
+          -n istio-system
+          --set defaultRevision=default
+          --kubeconfig={{ kubeconfig_path }}
+      changed_when: true
+      delegate_to: localhost
+
+    - name: Deploy istiod
+      ansible.builtin.command: >-
+          /home/{{ ansible_user }}/.local/bin/helm upgrade --install istiod istio/istiod
+          -n istio-system
+          --kubeconfig={{ kubeconfig_path }}
+      changed_when: true
+      delegate_to: localhost
+
+    - name: Create istio-ingress namespace
+      ansible.builtin.command:
+        cmd: "kubectl create namespace istio-ingress --kubeconfig={{ kubeconfig_path }}"
+      register: ns_ingress_result
+      failed_when: false
+      changed_when: true
+      delegate_to: localhost
+
+    - name: Deploy istio-ingress gateway
+      ansible.builtin.command: >-
+          /home/{{ ansible_user }}/.local/bin/helm upgrade --install istio-ingress istio/gateway
+          -n istio-ingress
+          --kubeconfig={{ kubeconfig_path }}
+      changed_when: true
+      delegate_to: localhost

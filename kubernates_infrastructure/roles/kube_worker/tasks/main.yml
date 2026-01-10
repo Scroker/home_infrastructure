@@ -1,0 +1,58 @@
+---
+- name: Unione dei nodi al cluster
+  block:
+
+    - name: Unisci il Worker al cluster
+      ansible.builtin.command:
+        cmd: "{{ hostvars[groups['master'][0]]['kube_master_join_command'] }}"
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+      when: vpn_ip is defined
+
+    - name: Configure VPN's IP in Kubelet
+      ansible.builtin.lineinfile:
+        path: /etc/kubernetes/kubelet
+        regexp: '^KUBELET_ADDRESS='
+        line: 'KUBELET_ADDRESS=--node-ip={{ vpn_ip }}'
+        create: true
+        mode: '0644'
+        owner: root
+        group: root
+      when: vpn_ip is defined
+      notify:
+        - Restart kubelet
+
+    - name: Configure hostname in Kubelet
+      ansible.builtin.lineinfile:
+        path: /etc/kubernetes/kubelet
+        regexp: '^KUBELET_HOSTNAME='
+        line: 'KUBELET_HOSTNAME=--hostname-override={{ hostname }}'
+        create: true
+        mode: '0644'
+        owner: root
+        group: root
+      notify:
+        - Restart kubelet
+
+    - name: Configure extra args for kubelet
+      ansible.builtin.lineinfile:
+        path: /etc/kubernetes/kubelet
+        regexp: '^KUBELET_EXTRA_ARGS='
+        line: 'KUBELET_EXTRA_ARGS=--node-ip={{ vpn_ip }} --cgroup-driver=systemd'
+        create: true
+        mode: '0644'
+        owner: root
+        group: root
+      notify:
+        - Restart kubelet
+
+    - name: Create the flannel conflist file
+      ansible.builtin.template:
+        src: 10-flannel.conflist.j2
+        dest: /etc/cni/net.d/10-flannel.conflist
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Restart kubelet
+        - Restart crio

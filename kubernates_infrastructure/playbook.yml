@@ -1,15 +1,68 @@
 ---
 - name: Intstall Crio and Kubernates
-  hosts: all
+  hosts: master, worker
   roles:
-    - kubernetes_prerequisites
+    - kubernetes
+  post_tasks:
+    - name: Esegui il reset dell'infrastruttura Kubernetes
+      ansible.builtin.include_tasks: tasks/clean_infrastructure.yml
 
-- name: Setup Kubernetes Infrastructure
+- name: Syncronyze timedate on all hosts
+  hosts: master, worker
+  vars:
+    timesync_ntp_servers:
+      - hostname: pool.ntp.org
+        iburst: true
+  roles:
+    - fedora.linux_system_roles.timesync
+
+- name: Setup Kubernetes master worker
   hosts: master
   roles:
-    - kubernetes_control_plane
+    - kube_master
 
-- name: Setup Kubernetes Infrastructure
-  hosts: node
+- name: Setup Kubernates client
+  hosts: cli01
+  tasks:
+    - name: Leggi il contenuto del file dal Master
+      ansible.builtin.slurp:
+        src: /etc/kubernetes/admin.conf
+      delegate_to: "{{ groups['master'][0] }}"
+      register: kubeconfig_file
+
+    - name: Crea la cartella .kube sul Client
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        mode: '0755'
+
+    - name: Scrivi il contenuto sul Client
+      ansible.builtin.copy:
+        content: "{{ kubeconfig_file['content'] | b64decode }}"
+        dest: "/home/{{ ansible_user }}/.kube/config"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+- name: Setup Kubernetes workers
+  hosts: master
+  tasks:
+    - name: Obtain join command from Master
+      ansible.builtin.include_tasks: tasks/generate_join_command.yml
+
+- name: Setup Kubernetes workers
+  hosts: worker
   roles:
-    - kubernetes_node
+    - kube_worker
+
+- name: Labelling workers from Master
+  hosts: master
+  become: false
+  tasks:
+    - name: Label worker workers
+      ansible.builtin.command: >-
+        kubectl label node {{ hostvars[item]['hostname'] }}.private node-role.kubernetes.io/worker=worker
+      loop: "{{ groups['worker'] }}"
+      failed_when: false
+      register: worker_role_output
+      changed_when: worker_role_output.rc == 0

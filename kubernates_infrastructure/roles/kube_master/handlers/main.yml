@@ -1,0 +1,16 @@
+---
+- name: Restart crio
+  ansible.builtin.systemd:
+    name: crio
+    state: restarted
+
+- name: Restart kubelet
+  ansible.builtin.systemd:
+    name: kubelet
+    state: restarted
+
+- name: Restart coredns
+  ansible.builtin.command:
+    cmd: "kubectl rollout restart deployment coredns -n kube-system"
+  become: false
+  changed_when: true

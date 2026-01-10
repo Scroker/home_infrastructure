@@ -1,4 +1,1 @@
 hostname: gateway01
-
-cockpit:
-  zone: internal

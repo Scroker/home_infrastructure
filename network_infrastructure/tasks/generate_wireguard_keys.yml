@@ -1,5 +1,4 @@
 ---
-
 - name: Create generated_keys directory on localhost
   ansible.builtin.file:
     path: "./generated_keys"

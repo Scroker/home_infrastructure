@@ -1,0 +1,10 @@
+---
+
+- name: Install and configure Dante SOCKS5 proxy server
+  become: true
+  block:
+
+    - name: Install Dante package
+      ansible.builtin.package:
+        name: dante-server
+        state: present
