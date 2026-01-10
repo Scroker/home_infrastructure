@@ -66,3 +66,9 @@
       failed_when: false
       register: worker_role_output
       changed_when: worker_role_output.rc == 0
+
+- name: Install Istio using Helm charts
+  hosts: master
+  tasks:
+    - name: Include Istio installation tasks
+      ansible.builtin.include_tasks: tasks/install_istio.yml

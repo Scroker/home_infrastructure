@@ -1,0 +1,52 @@
+---
+- name: Install Helm and kubectl
+  ansible.builtin.dnf:
+    name:
+      - helm
+      - kubernetes-client
+    state: present
+
+- name: Install Istio using Helm charts
+  become: false
+  block:
+    - name: Add Istio chart repo
+      ansible.builtin.command: "helm repo add istio https://istio-release.storage.googleapis.com/charts"
+      failed_when: false
+      register: result
+      changed_when: result.rc == 0
+
+    - name: Update Helm repos
+      ansible.builtin.command: "helm repo update"
+      failed_when: false
+      register: result
+      changed_when: result.rc == 0
+
+    - name: Create istio-system namespace
+      ansible.builtin.command: "kubectl create namespace istio-system"
+      failed_when: false
+      register: result
+      changed_when: result.rc == 0
+
+    - name: Deploy istio-base
+      ansible.builtin.command: "helm upgrade --install istio-base istio/base -n istio-system --set defaultRevision=default"
+      failed_when: false
+      register: result
+      changed_when: result.rc == 0
+
+    - name: Deploy istiod
+      ansible.builtin.command: "helm upgrade --install istiod istio/istiod -n istio-system"
+      failed_when: false
+      register: result
+      changed_when: result.rc == 0
+
+    - name: Create istio-ingress namespace
+      ansible.builtin.command: "kubectl create namespace istio-ingress"
+      failed_when: false
+      register: result
+      changed_when: result.rc == 0
+
+    - name: Deploy istio-ingress gateway
+      ansible.builtin.command: "helm upgrade --install istio-ingress istio/gateway -n istio-ingress"
+      failed_when: false
+      register: result
+      changed_when: result.rc == 0
