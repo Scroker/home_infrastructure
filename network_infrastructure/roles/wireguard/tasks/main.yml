@@ -1,11 +1,148 @@
 # - ansible.builtin.import_tasks: sysctl.yml
+- name: Check if pve is present
+  ansible.builtin.stat:
+    path: /etc/pve
+  register: wireguard_pve_check
+
+- name: Generate wireguard keys
+  ansible.builtin.import_tasks: tasks/generate_wireguard_keys.yml
+
+- name: Read and register both contents in the final list
+  ansible.builtin.set_fact:
+    wireguard_key_pair_contents: >
+      {{ wireguard_key_pair_contents + [{
+        'prefix': item.name ,
+        'private_key': lookup('ansible.builtin.file', [wireguard_keystore_directory, item.name ~ '_key'] | path_join ),
+        'public_key': lookup('ansible.builtin.file', [wireguard_keystore_directory , item.name ~ '_pub'] | path_join ),
+        'ipv4subnet': item.ipv4subnet,
+        'ipv6subnet': item.ipv6subnet,
+        'endpoint': item.endpoint | default(omit)
+      }] }}
+  loop: "{{ wireguard_clients }}"
+  loop_control:
+    label: "Processing {{ item.name }}"
+  delegate_to: localhost
+
+- name: Create private key fact
+  ansible.builtin.set_fact:
+    wireguard_private_key: "{{ lookup('ansible.builtin.file', [wireguard_keystore_directory, inventory_hostname ~ '_key'] | path_join ) | trim }}"
+
+- name: Enable ipv4 forward
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+  when: wireguard_ipv4_forwarding_needed is true
+
+- name: Disable ipv4 forward
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '0'
+    sysctl_set: true
+    state: present
+    reload: true
+  when: wireguard_ipv4_forwarding_needed is false
+
+- name: Enable ipv6 forward
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+  when: wireguard_ipv6_forwarding_needed is true
+
+- name: Disable ipv6 forward
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '0'
+    sysctl_set: true
+    state: present
+    reload: true
+  when: wireguard_ipv6_forwarding_needed is false
+
+- name: Install and configure wireguard
+  when:
+    - ansible_facts['os_family'] == "Debian"
+    - wireguard_pve_check.stat.exists
+  block:
+
+    - name: Install wireguard and other tools
+      ansible.builtin.apt:
+        name:
+          - wireguard-tools
+          - openresolv
+        update_cache: false
+        state: present
+
+    - name: Ensure /etc/wireguard directory exists
+      ansible.builtin.file:
+        path: /etc/wireguard
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Read and register both content in key pair fact
+      ansible.builtin.set_fact:
+        wireguard_key_pair_contents: >
+          {{ wireguard_key_pair_contents + [{
+            'prefix': item.name ,
+            'private_key': lookup('ansible.builtin.file', [wireguard_keystore_directory, item.name ~ '_key'] | path_join ),
+            'public_key': lookup('ansible.builtin.file', [wireguard_keystore_directory, item.name ~ '_pub'] | path_join ),
+            'ipv4subnet': item.ipv4subnet,
+            'ipv6subnet': item.ipv6subnet,
+            'endpoint': item.endpoint | default(omit)
+          }] }}
+      loop: "{{ wireguard_clients }}"
+      loop_control:
+        label: "Processing {{ item.name }}"
+      delegate_to: localhost
+
+    - name: Configure WireGuard interface
+      ansible.builtin.template:
+        src: templates/wg0.conf.j2
+        dest: /etc/wireguard/wg0.conf
+        owner: root
+        group: root
+        mode: '0600'
+      notify:
+        - Restart wg-quick
+
+    - name: Try to add wireguard interface
+      block:
+        - name: Add wireguard to the discoverable network interface
+          ansible.builtin.command: |
+            pvesh create /nodes/localhost/network
+            --iface {{ wireguard_interface_name }}
+            --type eth
+            --address {{ wireguard_ipv4subnet | ansible.utils.ipaddr('address') }}
+            --netmask {{ wireguard_ipv4subnet | ansible.utils.ipaddr('netmask') }}
+          register: wireguard_pvesh_result
+          changed_when: wireguard_pvesh_result.rc != 0
+      rescue:
+        - name: Gestisci il fallimento se l'interfaccia esiste
+          ansible.builtin.debug:
+            msg: "L'interfaccia esiste già, procedo con l'aggiornamento o ignoro."
+          when: "'interface already exists' in ansible_failed_result.stderr"
+
+        - name: Tenta il set se il create è fallito perché già esistente
+          ansible.builtin.command: >
+            pvesh set /nodes/localhost/network/wg0
+            --type eth
+            --address {{ wireguard_ipv4subnet | ansible.utils.ipaddr('address') }}
+            --netmask {{ wireguard_ipv4subnet | ansible.utils.ipaddr('netmask') }}
+          register: wireguard_pvesh_result
+          changed_when: wireguard_pvesh_result.rc != 0
+          when: "'interface already exists' in ansible_failed_result.stderr"
+
 
 - name: Install and condfigure wireguard
-  become: true
-  vars:
-    wireguard_private_key_file: "{{ wireguard_target_dir }}/{{ inventory_hostname }}_key"
-    wireguard_key_pair_contents: []
-
+  when:
+    - ansible_facts['os_family'] == "RedHat"
+    - ansible_facts['distribution'] == "Fedora" or ansible_facts['distribution'] == "Rocky"
   block:
 
     - name: Install wireguard and other tools
@@ -13,35 +150,10 @@
         name: wireguard-tools
         state: present
 
-    - name: Allow ipv4 forward
-      ansible.builtin.lineinfile:
-        path: /etc/sysctl.conf
-        line: net.ipv4.ip_forward = 1
-      notify:
-        - Reload sysctl
-      when: >-
-        ansible_facts.os_family == "RedHat" and
-        ipv4_forwarding_needed | default(false)
-
-    - name: Allow ipv6 forward
-      ansible.builtin.lineinfile:
-        path: /etc/sysctl.conf
-        line: net.ipv6.conf.all.forwarding = 1
-      notify:
-        - Reload sysctl
-      when: >-
-        ansible_facts.os_family == "RedHat" and
-        ipv6_forwarding_needed | default(false)
-
-    - name: Create private key fact
-      ansible.builtin.set_fact:
-        wireguard_private_key: "{{ lookup('file', wireguard_private_key_file) | trim }}"
-
-    - name: Rimuovi la connessione WireGuard esistente
+    - name: Remove the wireguard connection if exists
       community.general.nmcli:
-        conn_name: "{{ wireguard.connection_name | default(wireguard_connection_name) }}"
+        conn_name: "{{ wireguard_connection_name }}"
         state: absent
-      become: true
       register: wireguard_nmcli_remove
       failed_when:
         - wireguard_nmcli_remove.failed | default(false)
@@ -49,22 +161,22 @@
     - name: Create a wireguard connection
       community.general.nmcli:
         type: wireguard
-        conn_name: "{{ wireguard.connection_name | default(wireguard_connection_name) }}"
-        ifname: "{{ wireguard.interface_name | default(wireguard_interface_name) }}"
-        ip4: "{{ wireguard.ipv4subnet }}"
-        ip6: "{{ wireguard.ipv6subnet }}"
-        zone: "{{ wireguard.zone }}"
+        conn_name: "{{ wireguard_connection_name }}"
+        ifname: "{{ wireguard_interface_name }}"
+        ip4: "{{ wireguard_ipv4subnet }}"
+        ip6: "{{ wireguard_ipv6subnet }}"
+        zone: "{{ wireguard_zone }}"
         wireguard:
-          listen-port: "{{ wireguard.port }}"
+          listen-port: "{{ wireguard_port }}"
           private-key: "{{ wireguard_private_key }}"
         autoconnect: true
         state: present
       notify:
         - Activate WireGuard connection
 
-    - name: Modifica configurazione DNS senza alterare i permessi
+    - name: Change the nmconnection configuration to enable DNS
       community.general.ini_file:
-        path: /etc/NetworkManager/system-connections/{{ wireguard.connection_name | default(wireguard_connection_name) }}.nmconnection
+        path: /etc/NetworkManager/system-connections/{{ wireguard_connection_name }}.nmconnection
         section: ipv4
         option: "{{ item.option }}"
         value: "{{ item.value }}"
@@ -72,38 +184,14 @@
         mode: "0600"
         no_extra_spaces: true
       loop:
-        - { option: 'dns', value: '{{ wireguard.dns_server }}' }
+        - { option: 'dns', value: '{{ wireguard_dns_server }}' }
         - { option: 'dns-priority', value: '-1' }
         - { option: 'ignore-auto-dns', value: 'true' }
-      when: wireguard.dns_server is defined
+      when: wireguard_dns_server is defined
 
-    - name: Leggi e registra entrambi i contenuti nella lista finale
-      ansible.builtin.set_fact:
-        wireguard_key_pair_contents: >
-          {{ wireguard_key_pair_contents + [{
-            'prefix': item.name ,
-            'private_key': lookup('ansible.builtin.file', wireguard_target_dir + "/" + item.name + '_key'),
-            'public_key': lookup('ansible.builtin.file', wireguard_target_dir + "/" + item.name + '_pub'),
-            'ipv4subnet': item.ipv4subnet,
-            'ipv6subnet': item.ipv6subnet,
-            'endpoint': item.endpoint | default(omit)
-          }] }}
-      loop: "{{ wireguard.clients }}"
-      loop_control:
-        label: "Processing {{ item.name }}"
-      delegate_to: localhost
-
-    - name: Filtra la lista degli hostname esclusi
-      ansible.builtin.set_fact:
-        wireguard_other_hostnames_list: >
-          {{ wireguard_key_pair_contents
-             | rejectattr('prefix', 'equalto', inventory_hostname)
-             | list
-          }}
-
-    - name: Accoda il blocco di configurazione del nuovo peer
+    - name: Insert clients inside the nmconnection configuration
       ansible.builtin.blockinfile:
-        path: /etc/NetworkManager/system-connections/{{ wireguard.connection_name | default(wireguard_connection_name) }}.nmconnection
+        path: /etc/NetworkManager/system-connections/{{ wireguard_connection_name }}.nmconnection
         marker: "# {mark} ANSIBLE MANAGED PEER {{ item.prefix }}"
         block: |
           [wireguard-peer.{{ item.public_key }}]

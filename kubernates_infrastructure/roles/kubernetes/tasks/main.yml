@@ -1,14 +1,35 @@
 ---
 - name: Install and configure Cri-o and Kubernetes
   block:
+
+    - name: Imposta il nuovo hostname
+      ansible.builtin.hostname:
+        name: "{{ hostname }}.private"
+
+    - name: Imposta l'hostname Pretty
+      ansible.builtin.command:
+        cmd: "hostnamectl set-hostname --pretty '{{ hostname }}'"
+      changed_when: true
+
+    - name: Aggiorna il file /etc/hosts
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: "127.0.1.1 {{ hostname }}.private"
+        owner: root
+        group: root
+        mode: '0644'
+
     - name: Install required packages
       ansible.builtin.dnf:
         name:
-          - cri-o
-          - cri-tools
-          - containernetworking-plugins
+          - kubernetes-kubeadm
           - kubernetes
+          - containernetworking-plugins
           - iproute-tc
+          - socat
+          - cri-tools >= 1.32.0
+          - cri-o >= 1.32.0
         state: present
 
     - name: Create /etc/modules-load.d/crio.conf file
@@ -41,17 +62,15 @@
         group: root
         mode: '0644'
 
-    - name: Enable and start Cri-o service
+    - name: Enable and start crio and kubectl service
       ansible.builtin.systemd:
-        name: crio
+        name: "{{ item }}"
         enabled: true
         state: started
-
-    - name: Enable and start Cri-o service
-      ansible.builtin.systemd:
-        name: kubelet
-        enabled: true
-        state: started
+        daemon_reload: true
+      loop:
+        - crio
+        - kubelet
 
     - name: Disabilita la swap immediatamente (runtime)
       ansible.builtin.command: swapoff -a
@@ -78,31 +97,30 @@
         regexp: '^([^#].*?\sswap\s+.*)$'
         replace: '# \1'
 
-    - name: Change the cri-o network configurations
-      ansible.builtin.ini_file:
-        path: /etc/crio/crio.conf
-        section: "crio.network"
-        option: "{{ item.option }}"
-        value: "{{ item.value }}"
-        state: present
-        mode: "0644"
-      loop:
-        - { option: 'network_dir', value: '"/etc/cni/net.d"' }
-        - { option: 'plugin_dirs', value: '["/usr/libexec/cni","/opt/cni/bin"]' }
-      notify:
-        - Restart crio
+    - name: Ensure crio drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/crio/crio.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
 
     - name: Change the cri-o network configurations
-      ansible.builtin.ini_file:
-        path: /etc/crio/crio.conf
-        section: "crio.runtime"
-        option: "{{ item.option }}"
-        value: "{{ item.value }}"
-        state: present
-        mode: "0644"
-      loop:
-        - { option: 'conmon_cgroup', value: '"pod"' }
-        - { option: 'cgroup_manager', value: '"systemd"' }
+      ansible.builtin.copy:
+        dest: /etc/crio/crio.conf.d/99-kubernetes-cni.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [crio.network]
+          network_dir = "/etc/cni/net.d/"
+          plugin_dirs = [
+            "/usr/libexec/cni",
+            "/opt/cni/bin"
+          ]
+          [crio.runtime]
+          conmon_cgroup = "pod"
+          cgroup_manager = "systemd"
       notify:
         - Restart crio
 

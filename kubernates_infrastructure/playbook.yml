@@ -1,20 +1,17 @@
 ---
-- name: Intstall Crio and Kubernates
-  hosts: master, worker
-  roles:
-    - kubernetes
-  post_tasks:
-    - name: Esegui il reset dell'infrastruttura Kubernetes
-      ansible.builtin.include_tasks: tasks/clean_infrastructure.yml
-
-- name: Syncronyze timedate on all hosts
+- name: Setup hosts, intstall Cri-O and Kubernates
   hosts: master, worker
   vars:
+    timesync_ntp_provider: chrony
     timesync_ntp_servers:
       - hostname: pool.ntp.org
         iburst: true
   roles:
+    - kubernetes
     - fedora.linux_system_roles.timesync
+  post_tasks:
+    - name: Esegui il reset dell'infrastruttura Kubernetes
+      ansible.builtin.include_tasks: tasks/clean_infrastructure.yml
 
 - name: Setup Kubernetes master worker
   hosts: master

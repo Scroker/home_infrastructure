@@ -2,22 +2,33 @@
 - name: Reload NetworkManager connection
   ansible.builtin.command:
     cmd: nmcli connection reload
-  become: true
-  changed_when: true
+  register: wireguard_nmcli_reload_response
+  changed_when: wireguard_nmcli_reload_response.rc == 0
 
 - name: Activate WireGuard connection
   ansible.builtin.command:
-    cmd: nmcli connection up {{ wireguard.connection_name | default(wireguard_connection_name) }}
-  become: true
-  changed_when: true
+    cmd: nmcli connection up {{ wireguard_connection_name }}
+  register: wireguard_conn_response
+  changed_when: wireguard_conn_response.rc == 0
+
+- name: Restart wg-quick
+  ansible.builtin.systemd_service:
+    name: "wg-quick@{{ wireguard_interface_name }}"
+    enabled: true
+    state: restarted
 
 - name: Reload sysctl
   ansible.builtin.command:
     cmd: sysctl -p
-  become: true
-  changed_when: true
+  register: wireguard_sysctl_response
+  changed_when: wireguard_sysctl_response.rc == 0
 
 - name: Restart firewalld
   ansible.builtin.service:
     name: firewalld
     state: restarted
+
+- name: Reload PVE firewall
+  ansible.builtin.command: pve-firewall update
+  register: wireguard_pve_response
+  changed_when: wireguard_pve_response.rc == 0

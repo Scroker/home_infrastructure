@@ -15,6 +15,7 @@ dependencies:
   galaxy:
     collections:
     - name: ansible.posix
+    - name: ansible.utils
     - name: containers.podman
     - name: community.general
     - name: community.crypto

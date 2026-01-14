@@ -1,8 +1,7 @@
 ---
 - name: General server setup
-  hosts: gateway, server
-  pre_tasks:
-
+  hosts: gateway
+  tasks:
     - name: Imposta il nuovo hostname
       ansible.builtin.hostname:
         name: "{{ hostname }}.private"
@@ -22,15 +21,12 @@
         mode: '0644'
 
 - name: Setup VPN and Reverse Proxy
-  hosts: gateway, client, server
+  hosts: gateway, client, virtualization, server
   gather_facts: true
-  pre_tasks:
-    - name: Generate wireguard keys
-      ansible.builtin.import_tasks: tasks/generate_wireguard_keys.yml
   roles:
     - wireguard
 
 - name: Setup dnsmasq service
-  hosts: gtw01
+  hosts: gateway
   roles:
     - dnsmasq

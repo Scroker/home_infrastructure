@@ -1,3 +1,10 @@
 wireguard_interface_name: wg0
 wireguard_connection_name: con-{{ wireguard_interface_name }}
-wireguard_target_dir: "./generated_keys"
+wireguard_keystore_directory: "./generated_keys"
+wireguard_zone: public
+wireguard_ipv4_forwarding_needed: true
+wireguard_ipv6_forwarding_needed: true
+wireguard_port: 51820
+wireguard_ipv4subnet: "10.0.0.0/24"
+wireguard_ipv6subnet: "fd00:7::/64"
+wireguard_clients: []
