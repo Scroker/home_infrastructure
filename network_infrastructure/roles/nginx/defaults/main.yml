@@ -1,0 +1,4 @@
+nginx_server_fqdn: _;
+nginx_admin_email: example@mail.com
+nginx_http_port: 80
+nginx_https_port: 443

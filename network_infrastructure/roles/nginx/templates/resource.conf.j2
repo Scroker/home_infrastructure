@@ -1,0 +1,43 @@
+server {
+    listen       80;
+    listen       [::]:80;
+    server_name  {{ item.server_fqdn }};
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+
+    {% if item.upstreams is is %}
+    upstream {{ item.server_fqdn }}_upstream {
+    {% for upstream in item.upstreams %}
+        server {{ upstream }}:{{ item.server_port }};
+    {% endfor %}
+    }
+    {% endif %}
+
+    listen       443 ssl;
+    listen       [::]:443 ssl;
+    http2        on;
+    server_name  {{ item.server_fqdn }};
+
+    ssl_certificate "/etc/letsencrypt/live/{{ item.server_fqdn }}/fullchain.pem";
+    ssl_certificate_key "/etc/letsencrypt/live/{{ item.server_fqdn }}/privkey.pem";
+    ssl_session_cache shared:SSL:1m;
+    ssl_session_timeout  10m;
+    ssl_ciphers PROFILE=SYSTEM;
+    ssl_prefer_server_ciphers on;
+
+    location / {
+            {% if upstreams is defined %}
+            proxy_pass {{ item.server_fqdn }}_upstream;
+            {% else %}
+            proxy_pass {{ item.server_fqdn }};
+            {% endif %}
+            proxy_set_header Host $host;
+            proxy_http_version 1.1;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection “upgrade”;
+    }
+}
