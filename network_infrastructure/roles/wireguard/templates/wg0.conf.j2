@@ -4,7 +4,14 @@ PrivateKey = {{ wireguard_private_key }}
 ListenPort = {{ wireguard_port }}
 DNS = {{ wireguard_dns_server }}
 
+{% for item in wireguard_post_up_commands %}
+PostUp = {{ item }}
+{% endfor %}
+{% for item in wireguard_post_down_commands %}
+PostDown = {{ item }}
+{% endfor %}
 {% for item in wireguard_key_pair_contents %}
+
 [Peer]
 PublicKey = {{ item.public_key }}
 {% if item.preshared_key is defined %}

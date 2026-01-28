@@ -7,7 +7,7 @@ server {
 
 server {
 
-    {% if item.upstreams is is %}
+    {% if item.upstreams is defined %}
     upstream {{ item.server_fqdn }}_upstream {
     {% for upstream in item.upstreams %}
         server {{ upstream }}:{{ item.server_port }};
@@ -20,19 +20,18 @@ server {
     http2        on;
     server_name  {{ item.server_fqdn }};
 
-    ssl_certificate "/etc/letsencrypt/live/{{ item.server_fqdn }}/fullchain.pem";
-    ssl_certificate_key "/etc/letsencrypt/live/{{ item.server_fqdn }}/privkey.pem";
     ssl_session_cache shared:SSL:1m;
     ssl_session_timeout  10m;
     ssl_ciphers PROFILE=SYSTEM;
     ssl_prefer_server_ciphers on;
 
     location / {
-            {% if upstreams is defined %}
+            {% if item.upstreams is defined %}
             proxy_pass {{ item.server_fqdn }}_upstream;
             {% else %}
             proxy_pass {{ item.server_fqdn }};
             {% endif %}
+            proxy_ssl_verify off;
             proxy_set_header Host $host;
             proxy_http_version 1.1;
             proxy_set_header X-Real-IP $remote_addr;

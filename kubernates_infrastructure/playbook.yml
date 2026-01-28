@@ -69,3 +69,8 @@
   tasks:
     - name: Include Istio installation tasks
       ansible.builtin.include_tasks: tasks/install_istio.yml
+
+- name: Install OperatorHUB
+  hosts: master
+  tasks:
+    - ansible.builtin.include_tasks: tasks/install_operator_hub.yml

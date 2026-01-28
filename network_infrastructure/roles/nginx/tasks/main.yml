@@ -15,19 +15,6 @@
 - name: Check if firewalld is present and running
   ansible.builtin.service_facts:
 
-- name: Generate nginx certificate for {{ nginx_server_fqdn }}
-  ansible.builtin.command: |
-    sudo certbot certonly
-    --standalone
-    --non-interactive
-    --agree-tos
-    -d {{ nginx_server_fqdn }}
-    --email {{ nginx_admin_email }}
-  register: nginx_certbot_response
-  changed_when: nginx_certbot_response.rc == 0
-  notify:
-    - Restart nginx
-
 - name: Start and enable Nginx service
   ansible.builtin.service:
     name: nginx
@@ -42,9 +29,9 @@
     group: root
     mode: '0644'
   notify:
-    - Restart nginx
+    - Restart nginx service
 
-- name: Copy nginx configuration for {{ item.server_fqdn }}
+- name: Create nginx resources configuration
   ansible.builtin.template:
     src: resource.conf.j2
     dest: /etc/nginx/default.d/{{ item.server_fqdn }}.conf
@@ -54,22 +41,7 @@
   when: nginx_resources is defined
   loop: '{{ nginx_resources }}'
   notify:
-    - Restart nginx
-
-- name: Generate nginx certificate for {{ item.server_fqdn }}
-  ansible.builtin.command: |
-    sudo certbot certonly
-    --standalone
-    --non-interactive
-    --agree-tos
-    -d {{ item.server_fqdn }}
-    --email {{ item.admin_email }}
-  when: nginx_resources is defined
-  register: nginx_certbox_response
-  changed_when: nginx_certbot_response.rc == 0;
-  loop: '{{ nginx_resources }}'
-  notify:
-    - Restart nginx
+    - Restart nginx service
 
 - name: Configure firewall to allow http and https
   when: >-

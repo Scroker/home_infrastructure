@@ -1,11 +1,10 @@
-# - ansible.builtin.import_tasks: sysctl.yml
 - name: Check if pve is present
   ansible.builtin.stat:
     path: /etc/pve
   register: wireguard_pve_check
 
 - name: Generate wireguard keys
-  ansible.builtin.import_tasks: tasks/generate_wireguard_keys.yml
+  ansible.builtin.import_tasks: generate_wireguard_keys.yml
 
 - name: Read and register both contents in the final list
   ansible.builtin.set_fact:
@@ -84,22 +83,6 @@
         owner: root
         group: root
         mode: '0700'
-
-    - name: Read and register both content in key pair fact
-      ansible.builtin.set_fact:
-        wireguard_key_pair_contents: >
-          {{ wireguard_key_pair_contents + [{
-            'prefix': item.name ,
-            'private_key': lookup('ansible.builtin.file', [wireguard_keystore_directory, item.name ~ '_key'] | path_join ),
-            'public_key': lookup('ansible.builtin.file', [wireguard_keystore_directory, item.name ~ '_pub'] | path_join ),
-            'ipv4subnet': item.ipv4subnet,
-            'ipv6subnet': item.ipv6subnet,
-            'endpoint': item.endpoint | default(omit)
-          }] }}
-      loop: "{{ wireguard_clients }}"
-      loop_control:
-        label: "Processing {{ item.name }}"
-      delegate_to: localhost
 
     - name: Configure WireGuard interface
       ansible.builtin.template:

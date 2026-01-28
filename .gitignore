@@ -6,5 +6,5 @@ context
 vault.yml
 inventory.yml
 inventory
-generated_keys
+wireguard_keys
 ansible-navigator.log
