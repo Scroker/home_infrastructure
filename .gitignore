@@ -1,6 +1,7 @@
 .vscode
 .ansible
 .vault_pass
+host_vars/*
 
 context
 vault.yml

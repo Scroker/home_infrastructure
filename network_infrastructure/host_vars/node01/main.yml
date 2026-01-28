@@ -1,5 +1,0 @@
-hostname: prox-node01
-wireguard_post_up_commands:
-  - "sysctl -w net.ipv4.ip_forward=1"
-wireguard_post_down_commands:
-  - "sysctl -w net.ipv4.ip_forward=0"

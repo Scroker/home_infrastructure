@@ -8,7 +8,7 @@ network:
       addresses:
         - {{ wireguard_ipv4subnet }}
         - {{ wireguard_ipv6subnet }}
-{% if item in wireguard_dns_server %}
+{% if wireguard_dns_server is defined %}
       nameservers:
         addresses:
           - {{ wireguard_dns_server }}
