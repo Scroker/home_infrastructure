@@ -1,5 +1,10 @@
 - name: Check if pve is present
   ansible.builtin.stat:
+    path: /etc/netplan
+  register: wireguard_netplan_check
+
+- name: Check if pve is present
+  ansible.builtin.stat:
     path: /etc/pve
   register: wireguard_pve_check
 
@@ -62,19 +67,49 @@
     reload: true
   when: wireguard_ipv6_forwarding_needed is false
 
+- name: Install wireguard
+  block:
+    - name: Install wireguard on Debian based systems
+      ansible.builtin.apt:
+        name:
+          - wireguard-tools
+        update_cache: false
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Install wireguard on Fedora based systems
+      ansible.builtin.dnf:
+        name:
+          - wireguard-tools
+        update_cache: false
+        state: present
+      when: ansible_facts['os_family'] == "RedHat"
+
+
+- name: Install and configure wireguard
+  when:
+    - ansible_facts['os_family'] == "Debian"
+    - wireguard_netplan_check.stat.exists
+  block:
+
+    - name: Configure wireguard interface
+      ansible.builtin.template:
+        src: templates/60-wireguard.yaml.j2
+        dest: /etc/netplan/60-wireguard.yaml
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Applica configurazione Netplan
+      ansible.builtin.command: netplan apply
+      register: wireguard_netplan_route
+      changed_when: wireguard_netplan_route.rc == 0
+
 - name: Install and configure wireguard
   when:
     - ansible_facts['os_family'] == "Debian"
     - wireguard_pve_check.stat.exists
   block:
-
-    - name: Install wireguard and other tools
-      ansible.builtin.apt:
-        name:
-          - wireguard-tools
-          - openresolv
-        update_cache: false
-        state: present
 
     - name: Ensure /etc/wireguard directory exists
       ansible.builtin.file:
@@ -127,11 +162,6 @@
     - ansible_facts['os_family'] == "RedHat"
     - ansible_facts['distribution'] == "Fedora" or ansible_facts['distribution'] == "Rocky"
   block:
-
-    - name: Install wireguard and other tools
-      ansible.builtin.dnf:
-        name: wireguard-tools
-        state: present
 
     - name: Remove the wireguard connection if exists
       community.general.nmcli:

@@ -1,11 +1,11 @@
 hostname: gateway01
 
-nginx_server_fqdn: "{{ hostname }}.private"
+nginx_server_fqdn: "{{ hostname }}.private.org"
 nginx_admin_email: dramisgiorgio@outlook.com
 nginx_http_port: 80
 nginx_https_port: 443
 nginx_resources:
-  - server_fqnd: proxmox.private
+  - server_fqdn: proxmox.private
     server_port: 8006
     upstreams:
       - 10.0.0.5

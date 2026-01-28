@@ -21,12 +21,12 @@
         mode: '0644'
 
 - name: Setup VPN and Reverse Proxy
-  hosts: gateway, client, virtualization, server
+  hosts: gateway, client, virtualization, server, arm01
   gather_facts: true
   roles:
     - wireguard
 
 - name: Setup dnsmasq service
-  hosts: gateway
+  hosts: arm01
   roles:
     - dnsmasq

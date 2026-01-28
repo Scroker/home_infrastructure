@@ -1,0 +1,35 @@
+network:
+  version: 2
+  tunnels:
+    wg0:
+      mode: wireguard
+      key: {{ wireguard_private_key }}
+      port: {{ wireguard_port }}
+      addresses:
+        - {{ wireguard_ipv4subnet }}
+        - {{ wireguard_ipv6subnet }}
+{% if item in wireguard_dns_server %}
+      nameservers:
+        addresses:
+          - {{ wireguard_dns_server }}
+{% endif %}
+      routes:
+{% for item in wireguard_key_pair_contents %}
+          - to: {{ item.ipv4subnet }}
+            via: 0.0.0.0
+{% endfor %}
+      peers:
+{% for item in wireguard_key_pair_contents %}
+        - keys:
+            public: {{ item.public_key }}
+{% if item.preshared_key is defined %}
+            shared: {{ item.preshared_key }}
+{% endif %}
+          allowed-ips:
+            - {{ item.ipv4subnet }}
+            - {{ item.ipv6subnet }}
+{% if item.endpoint is defined %}
+          endpoint: {{ item.endpoint }}
+{% endif %}
+          keepalive: 30
+{% endfor %}

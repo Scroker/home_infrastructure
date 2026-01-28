@@ -16,7 +16,7 @@
 
 - name: Save Private Key to output file
   ansible.builtin.copy:
-    content: "{{ private_key_generation.stdout }}"
+    content: "{{ wireguard_private_key_generated.stdout }}"
     dest: "./wireguard_keys/{{ inventory_hostname }}_key"
     mode: '0600'
     force: "{{ wireguard_update_keys }}"

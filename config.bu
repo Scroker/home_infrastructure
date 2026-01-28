@@ -1,0 +1,46 @@
+variant: fcos
+version: 1.5.0
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKzSNI74LPEBZEo9klIPp1QaSYjcaWhtJgLAf5wgXKhq dramisgiorgio@outlook.com
+
+storage:
+  files:
+
+    - path: /etc/NetworkManager/system-connections/wg0.nmconnection
+      mode: 0600
+      contents: 
+        inline: |
+          [connection]
+          id=wg0
+          type=wireguard
+          interface-name=wg0
+          autoconnect=true
+
+          [wireguard]
+          private-key=CBf75/yqn9dhRlvU0Ia9OKNszBI2BvunZc76UgJCr08=
+          listen-port=51820
+
+          [wireguard-peer.muOegDuGPQZ3EiAwFDjOXaAGU84nSJJAjl9V6nSSRws=]
+          endpoint=87.106.13.87:51820
+          allowed-ips=10.0.0.0/24, fd00:7::/64;
+          persistent-keepalive=30
+
+          [ipv4]
+          address1=10.0.0.20/32
+          method=manual
+
+          [ipv6]
+          addr-gen-mode=default
+          address1=fd00:7::20/128
+          method=manual
+          
+    - path: /etc/sysctl.d/k8s.conf
+      mode: 0644
+      contents:
+        inline: |
+          net.bridge.bridge-nf-call-iptables  = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward                 = 1

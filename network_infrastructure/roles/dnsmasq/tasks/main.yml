@@ -5,10 +5,23 @@
     - name: Enable service facts on host
       ansible.builtin.service_facts:
 
-    - name: Install required packages
+    - name: Install required packages for RedHat based systems
       ansible.builtin.dnf:
-        name: dnsmasq
+        name:
+          - dnsmasq
+        update_cache: false
         state: present
+      when: ansible_facts['os_family'] == "RedHat"
+      notify:
+        - Start dnsmasq
+
+    - name: Install required packages for Debian based systems
+      ansible.builtin.apt:
+        name:
+          - dnsmasq
+        update_cache: false
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
       notify:
         - Start dnsmasq
 
@@ -39,5 +52,6 @@
         immediate: true
         state: enabled
       when: >-
+        ansible_facts['os_family'] == "RedHat" and
         ansible_facts.services['firewalld.service'].state is defined and
         ansible_facts.services['firewalld.service'].state == 'running'
