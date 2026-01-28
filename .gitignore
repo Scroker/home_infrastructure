@@ -2,6 +2,7 @@
 .ansible
 .vault_pass
 host_vars/*
+*/host_vars/*
 
 context
 vault.yml
