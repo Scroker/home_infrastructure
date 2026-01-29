@@ -21,7 +21,7 @@
         mode: '0644'
 
 - name: Setup VPN and Reverse Proxy
-  hosts: gateway, client, armsrv, vpnserver, mainsail
+  hosts: gateway, client, armsrv, virtualization, vpnserver, mainsail
   gather_facts: true
   roles:
     - wireguard
@@ -30,3 +30,8 @@
   hosts: gateway
   roles:
     - dnsmasq
+
+- name: Setup container runtimes
+  hosts: arm01
+  roles:
+    - container_runtime

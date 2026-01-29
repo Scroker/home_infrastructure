@@ -1,0 +1,5 @@
+---
+- name: Setup container runtimes
+  hosts: arm01
+  roles:
+    - container_runtime

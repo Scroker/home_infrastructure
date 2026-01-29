@@ -1,0 +1,23 @@
+version: 3
+
+images:
+  base_image:
+    name: quay.io/fedora/fedora:40
+dependencies:
+  system:
+  - openssh-clients
+  - sshpass
+  - wireguard-tools
+  ansible_core:
+    package_pip: ansible-core
+  ansible_runner:
+    package_pip: ansible-runner
+  galaxy:
+    collections:
+    - name: ansible.posix
+    - name: ansible.utils
+    - name: containers.podman
+    - name: community.general
+    - name: community.crypto
+  python:
+    - passlib

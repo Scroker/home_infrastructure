@@ -1,0 +1,26 @@
+[Unit]
+Description={{ item.description | default('Podman Container ' + item.container_name) }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Restart=always
+ExecStartPre=-/usr/bin/podman rm -f {{ item.container_name }}
+ExecStart=/usr/bin/podman run \
+  --name {{ item.container_name }} \
+  --privileged \
+  --security-opt label=disable \
+  --net={{ item.network | default('bridge') }} \
+  {% if item.volumes is defined %}
+  {% for volume in item.volumes %}
+  -v {{ volume }} \
+  {% endfor %}
+  {% endif %}
+  {{ item.image }}
+
+ExecStop=/usr/bin/podman stop -t 10 {{ item.container_name }}
+ExecStopPost=-/usr/bin/podman rm -f {{ item.container_name }}
+Type=simple
+
+[Install]
+WantedBy=multi-user.target

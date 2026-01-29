@@ -1,0 +1,74 @@
+---
+- name: Install podman container runtime
+  block:
+
+    - name: Install podman on Debian
+      ansible.builtin.apt:
+        name:
+          - podman
+        update_cache: false
+        state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install podman on RedHat
+      ansible.builtin.dnf:
+        name:
+          - podman
+        update_cache: false
+        state: present
+      when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Verifica versione Podman
+  ansible.builtin.command: podman --version
+  register: container_runtime_version_raw
+  changed_when: false
+
+- name: Setta variabile versione Podman
+  ansible.builtin.set_fact:
+    container_runtime_version: "{{ container_runtime_version_raw.stdout.split()[-1] }}"
+
+- name: Definisci variabili di percorso
+  ansible.builtin.set_fact:
+    container_runtime_use_quadlet: "{{ container_runtime_version is version('4.4.0', '>=') }}"
+    container_runtime_service_path: "{{ (container_runtime_version is version('4.4.0', '>=')) | ternary('/etc/containers/systemd', '/etc/systemd/system') }}"
+    container_runtime_extension: "{{ (container_runtime_version is version('4.4.0', '>=')) | ternary('container', 'service') }}"
+    container_runtime_template_file: "{{ (container_runtime_version is version('4.4.0', '>=')) | ternary('quadlet.container.j2', 'legacy.service.j2') }}"
+
+- name: Create container folder
+  ansible.builtin.file:
+    path: /etc/containers/systemd
+    state: directory
+    mode: "{{ item.0.dir_mode | default('0755') }}"
+    owner: "{{ item.0.dir_owner | default('root') }}"
+    group: "{{ item.0.dir_owner | default('root') }}"
+  when: container_runtime_use_quadlet
+
+- name: Crea le cartelle dei volumi sull'host
+  ansible.builtin.file:
+    path: "{{ item.1.split(':')[0] }}"
+    state: directory
+    mode: "{{ item.0.dir_mode | default('0755') }}"
+    owner: "{{ item.0.dir_owner | default('root') }}"
+    group: "{{ item.0.dir_owner | default('root') }}"
+  with_subelements:
+    - "{{ container_runtime_containers }}"
+    - volumes
+    - skip_missing: true
+
+- name: Crea il servizio systemd
+  ansible.builtin.template:
+    src: "{{ container_runtime_template_file }}"
+    dest: "{{ container_runtime_service_path }}/{{ item.container_name }}.{{ container_runtime_extension }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop: "{{ container_runtime_containers }}"
+  register: container_runtime_quadlet_results
+
+- name: Ensure the service are running
+  ansible.builtin.systemd:
+    name: "{{ item.container_name }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+  loop: "{{ container_runtime_containers }}"

@@ -8,4 +8,6 @@ wireguard_port: 51820
 wireguard_ipv4subnet: "10.0.0.0/24"
 wireguard_ipv6subnet: "fd00:7::/64"
 wireguard_clients: []
+wireguard_post_up_commands: []
+wireguard_post_down_commands: []
 wireguard_update_keys: false

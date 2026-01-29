@@ -1,0 +1,37 @@
+[Unit]
+{% if item.description is defined %}
+Description={{ item.description }}
+{% endif %}
+{% if item.after is defined %}
+After={{ item.after }}
+{% else %}
+After=network-online.target
+{% endif %}
+
+[Container]
+Image={{ item.image }}
+{% if item.container_name is defined %}
+ContainerName={{ item.container_name }}
+{% endif %}
+{% if item.network is defined %}
+Network={{ item.network }}
+{% endif %}
+{% if item.volumes is defined %}
+{% for volume in item.volumes %}
+Volume={{ volume }}
+{% endfor %}
+Privileged=true
+SecurityLabel=disable
+{% endif %}
+{% if item.exec is defined %}
+Exec={{ item.exec }}
+{% else %}
+Exec=--restart-policy=always
+{% endif %}
+
+[Install]
+{% if item.wanted_by is defined %}
+WantedBy={{ item.wanted_by }}
+{% else %}
+WantedBy=multi-user.target default.target
+{% endif %}
