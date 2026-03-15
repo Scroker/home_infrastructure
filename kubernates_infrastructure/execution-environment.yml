@@ -22,3 +22,5 @@ dependencies:
     - name: fedora.linux_system_roles
   python:
     - passlib
+    - proxmoxer
+    - requests

@@ -1,0 +1,5 @@
+{% for ups in nut_ups_list %}
+{% if ups.productid is defined and ups.vendorid is defined %}
+SUBSYSTEM=="usb", ATTR{idVendor}=="{{ ups.vendorid }}", ATTR{idProduct}=="{{ ups.productid }}", MODE="0666"
+{% endif %}
+{% endfor %}

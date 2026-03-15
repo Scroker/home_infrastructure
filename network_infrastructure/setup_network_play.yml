@@ -1,37 +1,6 @@
 ---
-- name: General server setup
-  hosts: gateway
-  tasks:
-    - name: Imposta il nuovo hostname
-      ansible.builtin.hostname:
-        name: "{{ hostname }}.private"
-
-    - name: Imposta l'hostname Pretty
-      ansible.builtin.command:
-        cmd: "hostnamectl set-hostname --pretty '{{ hostname }}'"
-      changed_when: true
-
-    - name: Aggiorna il file /etc/hosts
-      ansible.builtin.lineinfile:
-        path: /etc/hosts
-        regexp: '^127\.0\.1\.1'
-        line: "127.0.1.1 {{ hostname }}.private"
-        owner: root
-        group: root
-        mode: '0644'
-
 - name: Setup VPN and Reverse Proxy
-  hosts: gateway, client, armsrv, virtualization, vpnserver, mainsail
+  hosts: gateway, client, armsrv, virtualization, vpnserver, mainsail, srv01
   gather_facts: true
   roles:
     - wireguard
-
-- name: Setup dnsmasq service
-  hosts: gateway
-  roles:
-    - dnsmasq
-
-- name: Setup container runtimes
-  hosts: arm01
-  roles:
-    - container_runtime

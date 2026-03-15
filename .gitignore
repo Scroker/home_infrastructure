@@ -10,3 +10,4 @@ inventory.yml
 inventory
 wireguard_keys
 ansible-navigator.log
+config.bu

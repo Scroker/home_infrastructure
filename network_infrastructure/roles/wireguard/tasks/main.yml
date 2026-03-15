@@ -8,6 +8,24 @@
     path: /etc/NetworkManager
   register: wireguard_network_manager_check
 
+- name: Verifica se esiste apt
+  ansible.builtin.command: apt --version
+  register: wireguard_check_apt
+  ignore_errors: true
+  changed_when: true
+
+- name: Verifica se esiste dnf
+  ansible.builtin.command: dnf --version
+  register: wireguard_check_dnf
+  ignore_errors: true
+  changed_when: true
+
+- name: Verifica se esiste rpm-ostree
+  ansible.builtin.command: rpm-ostree --version
+  register: wireguard_check_ostree
+  ignore_errors: true
+  changed_when: true
+
 - name: Generate wireguard keys
   ansible.builtin.import_tasks: generate_wireguard_keys.yml
 
@@ -75,7 +93,7 @@
           - wireguard-tools
         update_cache: false
         state: present
-      when: ansible_facts['os_family'] == "Debian"
+      when: wireguard_check_apt.rc == 0
 
     - name: Install wireguard on Fedora based systems
       ansible.builtin.dnf:
@@ -83,8 +101,7 @@
           - wireguard-tools
         update_cache: false
         state: present
-      when: ansible_facts['os_family'] == "RedHat"
-
+      when: wireguard_check_dnf.rc == 0 and wireguard_check_ostree.rc != 0
 
 - name: Configure wireguard with netplan
   when:
@@ -232,4 +249,3 @@
         ansible_facts.services['firewalld.service'].state == 'running'
       notify:
         - Restart firewalld
-

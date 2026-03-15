@@ -38,13 +38,27 @@ http {
         http2        on;
         server_name  {{ nginx_server_fqdn }};
         root         /usr/share/nginx/html;
-
-        ssl_session_cache shared:SSL:1m;
-        ssl_session_timeout  10m;
-        ssl_ciphers PROFILE=SYSTEM;
-        ssl_prefer_server_ciphers on;
+        
+        ssl_certificate {{ nginx_config.ssl_certificate }};
+        ssl_certificate_key {{ nginx_config.ssl_certificate_key }};
+        ssl_session_cache {{ nginx_config.ssl_session_cache }};
+        ssl_session_timeout {{ nginx_config.ssl_session_timeout }};
+        ssl_ciphers {{ nginx_config.ssl_ciphers }};
+        ssl_prefer_server_ciphers {{ nginx_config.ssl_prefer_server_ciphers }};
     }
 
     # Load configuration files for the default server block.
     include /etc/nginx/default.d/*.conf;
+}
+
+stream {
+
+    upstream nut_backend {
+        server 127.0.0.1:3493;
+    }
+
+    server {
+        listen 4493;
+        proxy_pass nut_backend;
+    }
 }

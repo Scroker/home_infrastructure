@@ -1,7 +1,5 @@
 [Unit]
-{% if item.description is defined %}
-Description={{ item.description }}
-{% endif %}
+Description={{ item.description | default('Podman Container ' + item.container_name) }}
 {% if item.after is defined %}
 After={{ item.after }}
 {% else %}
@@ -13,25 +11,41 @@ Image={{ item.image }}
 {% if item.container_name is defined %}
 ContainerName={{ item.container_name }}
 {% endif %}
+{% if item.privileged is defined and item.privileged %}
+Privileged=true
+SecurityLabel=disable
+{% endif %}
 {% if item.network is defined %}
 Network={{ item.network }}
+{% endif %}
+{% if item.portmaps is defined %}
+{% for portmap in item.portmaps %}
+PublishPort={{ portmap }}
+{% endfor %}
+{% endif %}
+{% if item.environment is defined %}
+{% for env_var in item.environment %}
+Environment={{ env_var }}
+{% endfor %}
+{% endif %}
+{% if item.devices is defined %}
+{% for device in item.devices %}
+Device={{ device }}
+{% endfor %}
 {% endif %}
 {% if item.volumes is defined %}
 {% for volume in item.volumes %}
 Volume={{ volume }}
 {% endfor %}
-Privileged=true
-SecurityLabel=disable
 {% endif %}
 {% if item.exec is defined %}
 Exec={{ item.exec }}
-{% else %}
-Exec=--restart-policy=always
 {% endif %}
+
+[Service]
+Restart={{ item.restart }}
 
 [Install]
 {% if item.wanted_by is defined %}
 WantedBy={{ item.wanted_by }}
 {% else %}
-WantedBy=multi-user.target default.target
-{% endif %}

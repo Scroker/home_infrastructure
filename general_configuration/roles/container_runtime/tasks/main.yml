@@ -1,4 +1,15 @@
 ---
+- name: Create owners list
+  ansible.builtin.set_fact:
+    container_runtime_owners: "{{ container_runtime_containers | selectattr('owner', 'defined') | map(attribute='owner') | unique | list }}"
+  loop: "{{ container_runtime_containers }}"
+
+- name: Get root user info
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ item }}"
+  loop: "{{ container_runtime_owners }}"
+
 - name: Install podman container runtime
   block:
 
@@ -6,6 +17,7 @@
       ansible.builtin.apt:
         name:
           - podman
+          - slirp4netns
         update_cache: false
         state: present
       when: ansible_facts['os_family'] == 'Debian'
@@ -17,6 +29,14 @@
         update_cache: false
         state: present
       when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Impedisci a Podman di scavalcare UFW
+  ansible.builtin.template:
+    src: containers.conf.j2
+    dest: /etc/containers/containers.conf
+    owner: root
+    group: root
+    mode: '0644'
 
 - name: Verifica versione Podman
   ansible.builtin.command: podman --version
@@ -34,41 +54,102 @@
     container_runtime_extension: "{{ (container_runtime_version is version('4.4.0', '>=')) | ternary('container', 'service') }}"
     container_runtime_template_file: "{{ (container_runtime_version is version('4.4.0', '>=')) | ternary('quadlet.container.j2', 'legacy.service.j2') }}"
 
-- name: Create container folder
+- name: Copy the container files
+  ansible.builtin.copy:
+    src: "{{ item.container_name }}/"
+    dest: "/tmp/{{ item.container_name }}/"
+    mode: "{{ item.mode | default('0755') }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+  when: item.build_image | default(false)
+  loop: "{{ container_runtime_containers }}"
+
+- name: Abilita lingering per gli utenti non-root
+  ansible.builtin.command: "loginctl enable-linger {{ item }}"
+  loop: "{{ container_runtime_owners }}"
+  changed_when: false
+
+- name: Execute container item.build_image
+  ansible.builtin.command: |
+    sudo su {{ item.owner }} -c 'podman build -t {{ item.image }} /tmp/{{ item.container_name }}/'
+  when: item.build_image | default(false) and item.owner is defined and item.owner != 'root'
+  loop: "{{ container_runtime_containers }}"
+  changed_when: true
+
+- name: Execute container item.build_image
+  ansible.builtin.command: |
+    podman build -t localhost:{{ item.container_name }}:latest /tmp/{{ item.container_name }}/
+  when: item.build_image | default(false) and (item.owner is not defined or item.owner == 'root')
+  loop: "{{ container_runtime_containers }}"
+  changed_when: true
+
+- name: Crea le directory per i servizi
   ansible.builtin.file:
-    path: /etc/containers/systemd
+    path: >-
+      {{ container_runtime_use_quadlet | ternary('/home/' + item + '/.config/containers/systemd', '/home/' + item + '/.config/systemd/user') }}
     state: directory
-    mode: "{{ item.0.dir_mode | default('0755') }}"
-    owner: "{{ item.0.dir_owner | default('root') }}"
-    group: "{{ item.0.dir_owner | default('root') }}"
-  when: container_runtime_use_quadlet
+    mode: '0755'
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  loop: "{{ container_runtime_owners }}"
+
+- name: Crea le directory per i servizi (Root o owner)
+  ansible.builtin.file:
+    path: >-
+      {{ container_runtime_use_quadlet | ternary('/etc/containers/systemd', '/etc/systemd/system') }}
+    state: directory
+    mode: '0755'
+    owner: 'root'
+    group: 'root'
 
 - name: Crea le cartelle dei volumi sull'host
   ansible.builtin.file:
     path: "{{ item.1.split(':')[0] }}"
     state: directory
-    mode: "{{ item.0.dir_mode | default('0755') }}"
-    owner: "{{ item.0.dir_owner | default('root') }}"
-    group: "{{ item.0.dir_owner | default('root') }}"
+    mode: "{{ item.0.mode | default('0755') }}"
+    owner: "{{ item.0.owner | default('root') }}"
+    group: "{{ item.0.owner | default('root') }}"
   with_subelements:
     - "{{ container_runtime_containers }}"
     - volumes
     - skip_missing: true
 
-- name: Crea il servizio systemd
+- name: Crea il servizio user quadlet/systemd
   ansible.builtin.template:
     src: "{{ container_runtime_template_file }}"
-    dest: "{{ container_runtime_service_path }}/{{ item.container_name }}.{{ container_runtime_extension }}"
-    owner: root
-    group: root
-    mode: '0755'
+    dest: >-
+      {{ container_runtime_use_quadlet | ternary('/home/' + item.owner + '/.config/containers/systemd', '/home/' + item.owner + '/.config/systemd/user')
+      }}/{{ item.container_name }}.{{ container_runtime_extension }}
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.owner | default('root') }}"
+    mode: "{{ item.mode | default('0644') }}"
   loop: "{{ container_runtime_containers }}"
-  register: container_runtime_quadlet_results
+  when: item.owner is defined and item.owner != 'root'
+
+- name: Crea il servizio root quadlet/systemd
+  ansible.builtin.template:
+    src: "{{ container_runtime_template_file }}"
+    dest: >-
+      {{ container_runtime_use_quadlet | ternary('/etc/containers/systemd', '/etc/systemd/system')
+      }}/{{ item.container_name }}.{{ container_runtime_extension }}
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.owner | default('root') }}"
+    mode: "{{ item.mode | default('0644') }}"
+  loop: "{{ container_runtime_containers }}"
+  notify:
+    - Reload root services
+  when: item.owner is not defined or item.owner == 'root'
+
+- name: Reload systemd daemon
+  ansible.builtin.command: >-
+    sudo su {{ item }} -c 'export XDG_RUNTIME_DIR=/run/user/{{ ansible_facts['getent_passwd'][item][1] }} && systemctl --user daemon-reload'
+  loop: "{{ container_runtime_owners }}"
+  changed_when: true
 
 - name: Ensure the service are running
-  ansible.builtin.systemd:
-    name: "{{ item.container_name }}"
-    state: started
-    enabled: true
-    daemon_reload: true
+  ansible.builtin.command: >-
+    sudo su {{ item.owner }} -c 'export XDG_RUNTIME_DIR=/run/user/{{ ansible_facts['getent_passwd'][item.owner][1]
+    }} && systemctl enable --now --user {{ item.container_name }}'
   loop: "{{ container_runtime_containers }}"
+  when: item.owner is defined and item.owner != 'root'
+  changed_when: true

@@ -1,0 +1,11 @@
+nut_config_folder: /etc/nut
+nut_ups_list: []
+nut_conf_filemode: '0644'
+nut_owner: 'nut'
+nut_group: 'nut'
+nut_ssl_enabled: false
+nut_maxage: 15
+nut_maxconn: 1024
+nut_force_ssl: 0
+nut_mode: standalone
+nut_container: false

@@ -1,0 +1,13 @@
+{% for listener in nut_listeners | default(['127.0.0.1']) %}
+LISTEN {{ listener }} 3493
+{% endfor %}
+
+{% if nut_ssl_enabled | default(false) %}
+CERTIDENT "{{ nut_ssl_cert_name }}" "{{ nut_ssl_cert_pass }}"
+FORCESSL {{ nut_force_ssl }}
+{% endif %}
+
+MAXAGE {{ nut_maxage }}
+MAXCONN {{ nut_maxconn }}
+
+STATEPATH /var/run/nut

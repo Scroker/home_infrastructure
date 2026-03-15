@@ -1,0 +1,9 @@
+---
+- name: Reload root services
+  ansible.builtin.systemd:
+    name: "{{ item.container_name }}"
+    state: restarted
+    enabled: true
+    daemon_reload: true
+  when: item.owner is not defined or item.owner == 'root'
+  loop: "{{ container_runtime_containers }}"

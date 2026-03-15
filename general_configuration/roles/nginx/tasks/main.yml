@@ -1,16 +1,12 @@
-- name: Install Nginx
+- name: Install Certbot
   ansible.builtin.dnf:
     name:
       - epel-release
       - nginx
-    state: present
-
-- name: Install Certbot
-  ansible.builtin.dnf:
-    name:
       - certbot
       - python3-certbot-apache
     state: present
+  when: nginx_cloud_install is false
 
 - name: Check if firewalld is present and running
   ansible.builtin.service_facts:
@@ -20,28 +16,41 @@
     name: nginx
     state: started
     enabled: true
+  when: nginx_cloud_install is false
+
+- name: Copy nginx base configuration
+  ansible.builtin.copy:
+    src: nginx/
+    dest: "{{ nginx_config_folder }}"
+    owner: "{{ nginx_config_folder_owner }}"
+    group: "{{ nginx_config_folder_group }}"
+    mode: "{{ nginx_config_folder_mode }}"
+  when: nginx_cloud_install is true
 
 - name: Copy nginx configuration
   ansible.builtin.template:
     src: nginx.conf.j2
-    dest: /etc/nginx/nginx.conf
-    owner: root
-    group: root
-    mode: '0644'
-  notify:
-    - Restart nginx service
+    dest: "{{ nginx_config_folder }}/nginx.conf"
+    owner: "{{ nginx_config_folder_owner }}"
+    group: "{{ nginx_config_folder_group }}"
+    mode: "{{ nginx_config_folder_mode }}"
 
 - name: Create nginx resources configuration
   ansible.builtin.template:
     src: resource.conf.j2
-    dest: /etc/nginx/default.d/{{ item.server_fqdn }}.conf
-    owner: root
-    group: root
-    mode: '0644'
+    dest: "{{ nginx_config_folder }}/conf.d/{{ item.server_name }}.conf"
+    owner: "{{ nginx_config_folder_owner }}"
+    group: "{{ nginx_config_folder_group }}"
+    mode: "{{ nginx_config_folder_mode }}"
   when: nginx_resources is defined
   loop: '{{ nginx_resources }}'
-  notify:
-    - Restart nginx service
+
+- name: Restart nginx service
+  become: true
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+  when: nginx_cloud_install is false
 
 - name: Configure firewall to allow http and https
   when: >-

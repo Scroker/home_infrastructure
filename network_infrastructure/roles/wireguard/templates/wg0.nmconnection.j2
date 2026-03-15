@@ -1,0 +1,15 @@
+[connection]
+id=wg0
+type=wireguard
+interface-name=wg0
+
+[wireguard]
+private-key=IL_TUO_KEY_PRIVATO
+
+[wireguard-peer=CHIAVE_PUBBLICA_SERVER]
+endpoint=1.2.3.4:51820
+allowed-ips=10.0.0.0/24
+
+[ipv4]
+address1=10.0.0.2/24
+method=manual

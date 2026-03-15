@@ -1,0 +1,4 @@
+[network]
+{% if container_runtime_network_backend is defined %}
+network_backend = "{{ container_runtime_network_backend }}"
+{% endif %}

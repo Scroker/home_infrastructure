@@ -1,6 +1,0 @@
-- name: Setup VPN and Reverse Proxy
-  hosts: gateway
-  gather_facts: true
-  roles:
-    - nginx
-    - dnsmasq

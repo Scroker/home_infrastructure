@@ -1,0 +1,21 @@
+{% for ups in nut_ups_list%}
+[{{ ups.name }}]
+{% if ups.driver is defined %}
+    driver = {{ ups.driver }}
+{% endif %}
+{% if ups.port is defined %}
+    port = {{ ups.port }}
+{% endif %}
+{% if ups.vendorid is defined %}
+    vendorid = {{ ups.vendorid }}
+{% endif %}
+{% if ups.productid is defined %}
+    productid = {{ ups.productid }}
+{% endif %}
+{% if ups.subdriver is defined %}
+    subdriver = {{ ups.subdriver }}
+{% endif %}
+{% if ups.desc is defined %}
+    desc = {{ desc }}
+{% endif %}
+{% endfor %}

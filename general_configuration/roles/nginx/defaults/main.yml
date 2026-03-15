@@ -1,0 +1,16 @@
+nginx_server_fqdn: _
+nginx_admin_email: example@mail.com
+nginx_http_port: 80
+nginx_https_port: 443
+nginx_cloud_install: false
+nginx_config_folder: /etc/nginx
+nginx_config_folder_owner: root
+nginx_config_folder_group: root
+nginx_config_folder_mode: '0644'
+nginx_config:
+  ssl_certificate: '/etc/nginx/ssl/cert.pem'
+  ssl_certificate_key: '/etc/nginx/ssl/key.pem'
+  ssl_session_cache: 'shared:SSL:1m'
+  ssl_session_timeout: '10m'
+  ssl_ciphers: 'HIGH:!aNULL:!MD5'
+  ssl_prefer_server_ciphers: 'on'

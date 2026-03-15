@@ -1,0 +1,83 @@
+- name: Installazione pacchetti NUT
+  ansible.builtin.dnf:
+    name:
+      - nut
+      - nut-client
+      - usbutils
+    state: present
+  when: nut_container is false
+
+- name: Enssure config directory exist
+  ansible.builtin.file:
+    path: "{{ nut_config_folder }}"
+    state: directory
+    owner: "{{ nut_owner }}"
+    group: "{{ nut_group }}"
+    mode: "{{ nut_conf_filemode }}"
+
+- name: Configurazione nut.conf
+  ansible.builtin.template:
+    src: nut.conf.j2
+    dest: "{{ nut_config_folder }}/nut.conf"
+    owner: "{{ nut_owner }}"
+    group: "{{ nut_group }}"
+    mode: "{{ nut_conf_filemode }}"
+
+- name: Configurazione ups.conf
+  ansible.builtin.template:
+    src: ups.conf.j2
+    dest: "{{ nut_config_folder }}/ups.conf"
+    owner: "{{ nut_owner }}"
+    group: "{{ nut_group }}"
+    mode: "{{ nut_conf_filemode }}"
+
+- name: Configurazione upsd.conf
+  ansible.builtin.template:
+    src: upsd.conf.j2
+    dest: "{{ nut_config_folder }}/upsd.conf"
+    owner: "{{ nut_owner }}"
+    group: "{{ nut_group }}"
+    mode: "{{ nut_conf_filemode }}"
+
+- name: Configurazione upsd.users
+  ansible.builtin.template:
+    src: upsd.users.j2
+    dest: "{{ nut_config_folder }}/upsd.users"
+    owner: "{{ nut_owner }}"
+    group: "{{ nut_group }}"
+    mode: "{{ nut_conf_filemode }}"
+
+- name: Configurazione upsmon.conf
+  ansible.builtin.template:
+    src: upsmon.conf.j2
+    dest: "{{ nut_config_folder }}/upsmon.conf"
+    owner: "{{ nut_owner }}"
+    group: "{{ nut_group }}"
+    mode: "{{ nut_conf_filemode }}"
+
+- name: Configurazione upssched.conf
+  ansible.builtin.template:
+    src: upssched.conf.j2
+    dest: "{{ nut_config_folder }}/upssched.users"
+    owner: "{{ nut_owner }}"
+    group: "{{ nut_group }}"
+    mode: "{{ nut_conf_filemode }}"
+
+- name: Configurazione permessi udev per UPS
+  ansible.builtin.template:
+    src: 99-nut-ups.rules.j2
+    dest: /etc/udev/rules.d/99-nut-ups.rules
+    owner: "{{ nut_owner }}"
+    group: "{{ nut_group }}"
+    mode: "{{ nut_conf_filemode }}"
+  notify: Ricarica udev
+
+- name: Assicura che i servizi NUT siano avviati
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+  with_items:
+    - nut-server
+    - nut-client
+  when: nut_container is false

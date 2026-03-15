@@ -1,1 +1,2 @@
 container_runtime_containers: []
+container_runtime_network_backend: 'netavark'
