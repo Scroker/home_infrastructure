@@ -1,0 +1,17 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    nut_mode: standalone
+    nut_container: true   # skips dnf install and systemd service start
+    nut_owner: root
+    nut_group: root
+    nut_config_folder: /etc/nut
+    nut_ups_list:
+      - name: testups
+        driver: dummy-ups
+        port: testups
+        description: "Molecule test UPS"
+  roles:
+    - role: scroker.home_lab.nut

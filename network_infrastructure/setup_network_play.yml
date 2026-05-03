@@ -1,6 +1,6 @@
 ---
 - name: Setup VPN and Reverse Proxy
-  hosts: gateway, client, armsrv, virtualization, vpnserver, mainsail, srv01
+  hosts: client, armsrv, virtualization, vpnserver, mainsail, srv01
   gather_facts: true
   roles:
-    - wireguard
+    - scroker.home_lab.wireguard

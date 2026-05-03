@@ -1,0 +1,41 @@
+logoutput: {{ dante.log_output_file | default(dante_log_output_file) }}
+user.privileged: {{ dante.privileged_user }}
+user.unprivileged: {{ dante.unprivileged_user }}
+
+{% set _ips = dante.interface_ip | default(dante_interface_ip) %}
+{% if _ips is string %}
+internal: {{ _ips }} port = {{ dante.port | default(dante_port) }}
+{% else %}
+{% for ip in _ips %}
+internal: {{ ip }} port = {{ dante.port | default(dante_port) }}
+{% endfor %}
+{% endif %}
+
+external: {{ dante.interface | default(dante_interface) }}
+
+socksmethod: {{ dante.socks_method | default(dante_socks_method) }}
+clientmethod: {{ dante.client_method | default(dante_client_method) }}
+
+{% set _client_pass = dante.client_pass_rules if dante.client_pass_rules is defined else dante_client_pass_rules | default([]) %}
+{% for rule in _client_pass %}
+client pass {
+    from: {{ rule.from }} to: {{ rule.to }}
+    log: {{ rule.log }}
+}
+{% endfor %}
+
+{% set _socks_pass = dante.socks_pass_rules if dante.socks_pass_rules is defined else dante_socks_pass_rules | default([]) %}
+{% for rule in _socks_pass %}
+socks pass {
+    from: {{ rule.from }} to: {{ rule.to }}
+    log: {{ rule.log }}
+}
+{% endfor %}
+
+{% set _client_deny = dante.client_deny_rules if dante.client_deny_rules is defined else dante_client_deny_rules | default([]) %}
+{% for rule in _client_deny %}
+client block {
+    from: {{ rule.from }} to: {{ rule.to }}
+    log: {{ rule.log }}
+}
+{% endfor %}

@@ -1,0 +1,20 @@
+---
+- name: Crea container LXC per Dante su Proxmox
+  hosts: proxynodes
+  roles:
+    - scroker.home_lab.proxmox_lxc
+
+- name: Configura WireGuard nel container LXC (genera le chiavi)
+  hosts: lxc_containers
+  roles:
+    - scroker.home_lab.wireguard
+
+- name: Configura WireGuard sul server VPN (aggiunge dante-proxy come peer)
+  hosts: vpnserver
+  roles:
+    - scroker.home_lab.wireguard
+
+- name: Configura Dante dentro l'LXC
+  hosts: lxc_containers
+  roles:
+    - scroker.home_lab.dante

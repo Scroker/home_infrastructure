@@ -1,0 +1,62 @@
+---
+- name: Crea container LXC su Proxmox
+  community.proxmox.proxmox:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ proxmox_lxc_api_user }}"
+    api_password: "{{ proxmox_lxc_api_password | default(omit) }}"
+    api_token_id: "{{ proxmox_lxc_api_token_id | default(omit) }}"
+    api_token_secret: "{{ proxmox_lxc_api_token_secret | default(omit) }}"
+    node: "{{ proxmox_lxc_node }}"
+    vmid: "{{ item.vmid }}"
+    hostname: "{{ item.container_name }}"
+    ostemplate: "{{ item.ostemplate }}"
+    cores: "{{ item.cores | default(1) }}"
+    memory: "{{ item.memory | default(256) }}"
+    disk: "{{ proxmox_lxc_default_storage }}:{{ item.disk_size | default(proxmox_lxc_default_disk_size) }}"
+    netif: >-
+      {"net0":"name=eth0,bridge={{ item.bridge | default(proxmox_lxc_default_bridge) }},ip={{ item.ip }}{{ ',gw=' + item.gateway if item.gateway is defined else '' }}"}
+    onboot: "{{ item.onboot | default(true) }}"
+    unprivileged: "{{ item.unprivileged | default(true) }}"
+    pubkey: "{{ lookup('file', proxmox_lxc_ssh_pubkey) }}"
+    nameserver: "{{ item.nameserver | default(proxmox_lxc_nameserver) }}"
+    state: present
+  delegate_to: localhost
+  loop: "{{ proxmox_lxc_containers }}"
+
+- name: Avvia container LXC
+  community.proxmox.proxmox:
+    api_host: "{{ ansible_host }}"
+    api_user: "{{ proxmox_lxc_api_user }}"
+    api_password: "{{ proxmox_lxc_api_password | default(omit) }}"
+    api_token_id: "{{ proxmox_lxc_api_token_id | default(omit) }}"
+    api_token_secret: "{{ proxmox_lxc_api_token_secret | default(omit) }}"
+    node: "{{ proxmox_lxc_node }}"
+    vmid: "{{ item.vmid }}"
+    hostname: "{{ item.container_name }}"
+    state: started
+  delegate_to: localhost
+  loop: "{{ proxmox_lxc_containers }}"
+
+- name: Attendi che SSH sia disponibile nell'LXC
+  ansible.builtin.command:
+    cmd: "pct exec {{ item.vmid }} -- bash -c 'systemctl is-active ssh'"
+  register: _proxmox_lxc_ssh_check
+  until: _proxmox_lxc_ssh_check.rc == 0
+  retries: 24
+  delay: 5
+  changed_when: false
+  loop: "{{ proxmox_lxc_containers }}"
+
+- name: Aggiungi container LXC all'inventory
+  ansible.builtin.add_host:
+    name: "{{ item.container_name }}"
+    ansible_host: "{{ item.ip | regex_replace('/.*', '') }}"
+    ansible_user: root
+    ansible_ssh_common_args: >-
+      -o StrictHostKeyChecking=no
+      -o ProxyCommand="ssh -o StrictHostKeyChecking=no root@{{ ansible_host }} pct exec {{ item.vmid }} -- nc -q0 127.0.0.1 22 2>/dev/null"
+    groups: "{{ item.groups | default(['lxc_containers']) }}"
+    dante: "{{ dante | default(omit) }}"
+    dante_config_dir: "{{ dante_config_dir | default('/etc/dante') }}"
+  loop: "{{ proxmox_lxc_containers }}"
+  changed_when: false

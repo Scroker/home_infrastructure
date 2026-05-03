@@ -1,0 +1,24 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    dante:
+      log_output_file: syslog
+      privileged_user: root
+      unprivileged_user: nobody
+      interface_ip: "0.0.0.0"
+      port: 1080
+      interface: eth0
+      socks_method: none
+      client_method: none
+      client_pass_rules:
+        - from: "10.0.0.0/24"
+          to: "0.0.0.0/0"
+          log: "connect error"
+      socks_pass_rules:
+        - from: "10.0.0.0/24"
+          to: "0.0.0.0/0"
+          log: "connect error"
+  roles:
+    - role: scroker.home_lab.dante

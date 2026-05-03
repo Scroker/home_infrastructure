@@ -1,0 +1,67 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Check podman binary
+      ansible.builtin.stat:
+        path: /usr/bin/podman
+      register: podman_bin
+
+    - name: Assert podman is installed
+      ansible.builtin.assert:
+        that:
+          - podman_bin.stat.exists
+          - podman_bin.stat.executable
+        fail_msg: "podman binary not found at /usr/bin/podman"
+
+    - name: Assert slirp4netns is NOT installed on non-Proxmox (container has no /etc/pve)
+      ansible.builtin.stat:
+        path: /etc/pve
+      register: pve_check
+
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: rpm
+
+    - name: Assert slirp4netns installed only on non-Proxmox
+      ansible.builtin.assert:
+        that:
+          - pve_check.stat.exists or 'slirp4netns' in ansible_packages
+        fail_msg: "slirp4netns should be installed on non-Proxmox systems"
+
+    - name: Check containers.conf
+      ansible.builtin.stat:
+        path: /etc/containers/containers.conf
+      register: containers_conf
+
+    - name: Assert containers.conf deployed
+      ansible.builtin.assert:
+        that:
+          - containers_conf.stat.exists
+        fail_msg: "/etc/containers/containers.conf was not deployed"
+
+    - name: Check quadlet unit file exists
+      ansible.builtin.stat:
+        path: /etc/containers/systemd/test-hello.container
+      register: unit_file
+
+    - name: Assert unit file was created
+      ansible.builtin.assert:
+        that:
+          - unit_file.stat.exists
+        fail_msg: "Quadlet unit file /etc/containers/systemd/test-hello.container not found"
+
+    - name: Read unit file content
+      ansible.builtin.slurp:
+        src: /etc/containers/systemd/test-hello.container
+      register: unit_content
+
+    - name: Assert unit file has expected sections
+      ansible.builtin.assert:
+        that:
+          - "'[Container]' in (unit_content.content | b64decode)"
+          - "'Image=docker.io/library/hello-world:latest' in (unit_content.content | b64decode)"
+          - "'[Service]' in (unit_content.content | b64decode)"
+          - "'[Install]' in (unit_content.content | b64decode)"
+        fail_msg: "unit file is missing expected sections or image reference"

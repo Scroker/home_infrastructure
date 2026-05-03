@@ -1,0 +1,10 @@
+---
+# Porte aperte da firewalld su tutti i nodi Kubernetes (master e worker)
+kubernetes_firewall_ports:
+  - 6443/tcp       # API server
+  - 2379-2380/tcp  # etcd (client e peer)
+  - 10250/tcp      # kubelet API
+  - 10257/tcp      # kube-controller-manager
+  - 10259/tcp      # kube-scheduler
+  - 30000-32767/tcp  # NodePort services
+  - 8472/udp       # Flannel VXLAN overlay

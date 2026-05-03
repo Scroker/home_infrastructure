@@ -7,7 +7,7 @@
       - hostname: pool.ntp.org
         iburst: true
   roles:
-    - kubernetes
+    - scroker.home_lab.kubernetes
     - fedora.linux_system_roles.timesync
   post_tasks:
     - name: Esegui il reset dell'infrastruttura Kubernetes
@@ -16,7 +16,7 @@
 - name: Setup Kubernetes master worker
   hosts: master
   roles:
-    - kube_master
+    - scroker.home_lab.kube_master
 
 - name: Setup Kubernates client
   hosts: cli01
@@ -50,7 +50,7 @@
 - name: Setup Kubernetes workers
   hosts: worker
   roles:
-    - kube_worker
+    - scroker.home_lab.kube_worker
 
 - name: Labelling workers from Master
   hosts: master

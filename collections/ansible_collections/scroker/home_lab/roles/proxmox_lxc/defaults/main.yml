@@ -1,0 +1,7 @@
+proxmox_lxc_api_user: "root@pam"
+proxmox_lxc_node: "pve"
+proxmox_lxc_default_bridge: "vmbr0"
+proxmox_lxc_default_storage: "local-lvm"
+proxmox_lxc_default_disk_size: "4"
+proxmox_lxc_nameserver: "1.1.1.1 8.8.8.8"
+proxmox_lxc_containers: []

@@ -1,0 +1,24 @@
+---
+- name: Install and configure Dante SOCKS5 proxy server
+  become: true
+  block:
+
+    - name: Install Dante package
+      ansible.builtin.package:
+        name: dante-server
+        state: present
+
+    - name: Deploy Dante configuration
+      ansible.builtin.template:
+        src: sockd.conf.j2
+        dest: /etc/danted.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart Dante service
+
+    - name: Enable and start Dante service
+      ansible.builtin.service:
+        name: danted
+        state: started
+        enabled: true

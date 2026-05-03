@@ -1,0 +1,7 @@
+galaxy_info:
+  role_name: proxmox_lxc
+  namespace: scroker
+  description: Crea e gestisce container LXC su Proxmox VE via API
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.15"
+dependencies: []

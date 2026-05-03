@@ -1,0 +1,3 @@
+molecule>=26
+molecule-podman>=2
+ansible-lint>=24

@@ -1,0 +1,17 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    wireguard_keystore_directory: "{{ playbook_dir }}/wireguard_keys"
+    wireguard_update_keys: false
+    wireguard_ipv4subnet: "10.99.0.1/24"
+    wireguard_ipv6subnet: "fd99::/64"
+    wireguard_ipv4_forwarding_needed: true
+    wireguard_ipv6_forwarding_needed: false
+    wireguard_clients:
+      - name: client01
+        ipv4subnet: "10.99.0.2/24"
+        ipv6subnet: "fd99::2/64"
+  roles:
+    - role: scroker.home_lab.wireguard

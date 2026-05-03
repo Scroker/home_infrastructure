@@ -1,0 +1,70 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: rpm
+
+    - name: Assert nginx is installed
+      ansible.builtin.assert:
+        that:
+          - "'nginx' in ansible_packages"
+        fail_msg: "nginx package is not installed"
+
+    - name: Check nginx.conf exists
+      ansible.builtin.stat:
+        path: /etc/nginx/nginx.conf
+      register: nginx_conf
+
+    - name: Assert nginx.conf exists
+      ansible.builtin.assert:
+        that:
+          - nginx_conf.stat.exists
+        fail_msg: "/etc/nginx/nginx.conf is missing"
+
+    - name: Read nginx.conf
+      ansible.builtin.slurp:
+        src: /etc/nginx/nginx.conf
+      register: nginx_conf_content
+
+    - name: Assert nginx.conf has ssl configuration
+      ansible.builtin.assert:
+        that:
+          - "'ssl_certificate' in (nginx_conf_content.content | b64decode)"
+          - "'ssl_ciphers' in (nginx_conf_content.content | b64decode)"
+        fail_msg: "nginx.conf is missing ssl configuration"
+
+    - name: Check resource conf file exists
+      ansible.builtin.stat:
+        path: /etc/nginx/conf.d/proxmox.private.conf
+      register: resource_conf
+
+    - name: Assert resource conf exists
+      ansible.builtin.assert:
+        that:
+          - resource_conf.stat.exists
+        fail_msg: "/etc/nginx/conf.d/proxmox.private.conf is missing"
+
+    - name: Read resource conf
+      ansible.builtin.slurp:
+        src: /etc/nginx/conf.d/proxmox.private.conf
+      register: resource_conf_content
+
+    - name: Assert resource conf has upstream and server_name
+      ansible.builtin.assert:
+        that:
+          - "'server_name  proxmox.private' in (resource_conf_content.content | b64decode)"
+          - "'10.0.0.5:8006' in (resource_conf_content.content | b64decode)"
+        fail_msg: "resource conf is missing expected upstream or server_name"
+
+    - name: Assert nginx service is running
+      ansible.builtin.service_facts:
+
+    - name: Assert nginx is active
+      ansible.builtin.assert:
+        that:
+          - "'nginx.service' in ansible_facts.services"
+          - ansible_facts.services['nginx.service'].state == 'running'
+        fail_msg: "nginx service is not running"

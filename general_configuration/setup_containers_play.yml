@@ -1,5 +1,5 @@
 ---
 - name: Setup container runtimes
-  hosts: arm01
+  hosts: armsrv, virtualization
   roles:
-    - container_runtime
+    - scroker.home_lab.container_runtime

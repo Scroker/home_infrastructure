@@ -1,0 +1,15 @@
+namespace: scroker
+name: home_lab
+version: 1.0.0
+readme: README.md
+authors:
+  - Giorgio Dramis
+description: Ansible roles for home lab infrastructure (Proxmox/Fedora CoreOS)
+license:
+  - GPL-2.0-or-later
+tags:
+  - homelab
+  - kubernetes
+  - wireguard
+  - podman
+repository: https://github.com/Scroker/home_infrastructure

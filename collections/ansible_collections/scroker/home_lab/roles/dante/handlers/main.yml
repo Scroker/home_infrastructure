@@ -1,0 +1,5 @@
+---
+- name: Restart Dante service
+  ansible.builtin.service:
+    name: danted
+    state: restarted

@@ -1,0 +1,32 @@
+---
+# Pre-create the wireguard key directory and mock key files on localhost.
+# This lets the role skip key generation and tests the key-lookup path.
+- name: Prepare localhost with mock WireGuard keys
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Install wireguard-tools on localhost for key generation
+      ansible.builtin.package:
+        name: wireguard-tools
+        state: present
+      become: true
+
+    - name: Create keystore directory
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/wireguard_keys"
+        state: directory
+        mode: '0700'
+
+    - name: Generate private key for server
+      ansible.builtin.shell: |
+        wg genkey > "{{ playbook_dir }}/wireguard_keys/instance_key"
+        wg pubkey < "{{ playbook_dir }}/wireguard_keys/instance_key" > "{{ playbook_dir }}/wireguard_keys/instance_pub"
+      args:
+        creates: "{{ playbook_dir }}/wireguard_keys/instance_key"
+
+    - name: Generate private key for test client
+      ansible.builtin.shell: |
+        wg genkey > "{{ playbook_dir }}/wireguard_keys/client01_key"
+        wg pubkey < "{{ playbook_dir }}/wireguard_keys/client01_key" > "{{ playbook_dir }}/wireguard_keys/client01_pub"
+      args:
+        creates: "{{ playbook_dir }}/wireguard_keys/client01_key"

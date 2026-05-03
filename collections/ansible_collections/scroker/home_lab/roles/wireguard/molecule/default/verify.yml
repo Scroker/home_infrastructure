@@ -1,0 +1,58 @@
+---
+- name: Verify
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Check key files were created for server
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/wireguard_keys/{{ item }}"
+      register: key_files
+      loop:
+        - instance_key
+        - instance_pub
+        - client01_key
+        - client01_pub
+
+    - name: Assert all key files exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.size > 0
+        fail_msg: "WireGuard key file missing: {{ item.item }}"
+      loop: "{{ key_files.results }}"
+
+    - name: Read server public key
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/wireguard_keys/instance_pub"
+      register: server_pubkey
+
+    - name: Assert server public key is a valid base64 WireGuard key (44 chars)
+      ansible.builtin.assert:
+        that:
+          - (server_pubkey.content | b64decode | trim | length) == 44
+        fail_msg: "Server public key does not look like a valid WireGuard key"
+
+- name: Verify wireguard-tools installed on target
+  hosts: all
+  become: true
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: rpm
+
+    - name: Assert wireguard-tools is installed
+      ansible.builtin.assert:
+        that:
+          - "'wireguard-tools' in ansible_packages"
+        fail_msg: "wireguard-tools is not installed"
+
+    - name: Check ip forwarding is enabled
+      ansible.builtin.command: sysctl net.ipv4.ip_forward
+      register: ipv4_forward
+      changed_when: false
+
+    - name: Assert ipv4 forwarding is on
+      ansible.builtin.assert:
+        that:
+          - "'net.ipv4.ip_forward = 1' in ipv4_forward.stdout"
+        fail_msg: "IPv4 forwarding is not enabled"

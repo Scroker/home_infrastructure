@@ -1,0 +1,6 @@
+---
+pod_network_cidr: "10.244.0.0/16"
+
+# Versione Flannel da installare — aggiornare in sincronia con la versione di Kubernetes
+# Compatibilità: https://github.com/flannel-io/flannel#compatibility-matrix
+flannel_version: "v0.26.7"

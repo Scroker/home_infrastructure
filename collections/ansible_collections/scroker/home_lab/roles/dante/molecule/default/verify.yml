@@ -1,0 +1,51 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: rpm
+
+    - name: Assert dante-server is installed
+      ansible.builtin.assert:
+        that:
+          - "'dante-server' in ansible_packages"
+        fail_msg: "dante-server package is not installed"
+
+    - name: Check /etc/sockd.conf
+      ansible.builtin.stat:
+        path: /etc/sockd.conf
+      register: sockd_conf
+
+    - name: Assert /etc/sockd.conf exists with correct permissions
+      ansible.builtin.assert:
+        that:
+          - sockd_conf.stat.exists
+          - sockd_conf.stat.mode == '0644'
+        fail_msg: "/etc/sockd.conf missing or wrong permissions"
+
+    - name: Read /etc/sockd.conf
+      ansible.builtin.slurp:
+        src: /etc/sockd.conf
+      register: sockd_content
+
+    - name: Assert sockd.conf contains expected directives
+      ansible.builtin.assert:
+        that:
+          - "'internal: 0.0.0.0 port = 1080' in (sockd_content.content | b64decode)"
+          - "'external: eth0' in (sockd_content.content | b64decode)"
+          - "'socksmethod: none' in (sockd_content.content | b64decode)"
+          - "'clientmethod: none' in (sockd_content.content | b64decode)"
+          - "'from: 10.0.0.0/24' in (sockd_content.content | b64decode)"
+        fail_msg: "sockd.conf does not contain expected configuration"
+
+    - name: Assert danted service is enabled
+      ansible.builtin.service_facts:
+
+    - name: Assert danted is running
+      ansible.builtin.assert:
+        that:
+          - "'danted.service' in ansible_facts.services"
+          - ansible_facts.services['danted.service'].state == 'running'
+        fail_msg: "danted service is not running"

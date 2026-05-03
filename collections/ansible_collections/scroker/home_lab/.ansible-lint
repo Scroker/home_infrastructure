@@ -1,0 +1,13 @@
+---
+profile: basic
+
+exclude_paths:
+  - "*/context/**"
+  - ".cache/"
+
+skip_list:
+  - name[casing]  # task names in Italian are intentional
+
+warn_list:
+  - yaml[line-length]
+  - no-changed-when

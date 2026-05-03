@@ -2,9 +2,11 @@ version: 3
 
 images:
   base_image:
-    name: quay.io/fedora/fedora:40
+    name: quay.io/fedora/fedora:42
 dependencies:
   system:
+  - python3
+  - python3-pip
   - openssh-clients
   - sshpass
   - wireguard-tools
@@ -21,3 +23,13 @@ dependencies:
     - name: community.crypto
   python:
     - passlib
+
+additional_build_files:
+  - src: ../collections/ansible_collections/scroker/home_lab
+    dest: home_lab_collection
+
+additional_build_steps:
+  prepend_base:
+    - RUN dnf install -y python3 python3-pip && dnf clean all
+  append_galaxy:
+    - COPY _build/home_lab_collection /usr/share/ansible/collections/ansible_collections/scroker/home_lab

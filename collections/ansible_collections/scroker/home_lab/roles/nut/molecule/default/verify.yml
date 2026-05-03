@@ -1,0 +1,57 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Check NUT config directory
+      ansible.builtin.stat:
+        path: /etc/nut
+      register: nut_dir
+
+    - name: Assert /etc/nut directory exists
+      ansible.builtin.assert:
+        that:
+          - nut_dir.stat.exists
+          - nut_dir.stat.isdir
+        fail_msg: "/etc/nut directory is missing"
+
+    - name: Check all NUT config files exist
+      ansible.builtin.stat:
+        path: "/etc/nut/{{ item }}"
+      register: nut_files
+      loop:
+        - nut.conf
+        - ups.conf
+        - upsd.conf
+        - upsd.users
+        - upsmon.conf
+
+    - name: Assert all NUT config files exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: "Missing NUT config file: {{ item.item }}"
+      loop: "{{ nut_files.results }}"
+
+    - name: Read nut.conf
+      ansible.builtin.slurp:
+        src: /etc/nut/nut.conf
+      register: nut_conf_content
+
+    - name: Assert nut.conf has correct MODE
+      ansible.builtin.assert:
+        that:
+          - "'MODE= standalone' in (nut_conf_content.content | b64decode)"
+        fail_msg: "nut.conf does not contain MODE= standalone"
+
+    - name: Read ups.conf
+      ansible.builtin.slurp:
+        src: /etc/nut/ups.conf
+      register: ups_conf_content
+
+    - name: Assert ups.conf references test UPS driver
+      ansible.builtin.assert:
+        that:
+          - "'testups' in (ups_conf_content.content | b64decode)"
+          - "'driver' in (ups_conf_content.content | b64decode)"
+        fail_msg: "ups.conf does not contain testups configuration"

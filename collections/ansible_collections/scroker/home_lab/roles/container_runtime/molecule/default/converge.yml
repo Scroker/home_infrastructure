@@ -1,0 +1,16 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    container_runtime_containers:
+      - container_name: test-hello
+        description: "Molecule test container"
+        image: "docker.io/library/hello-world:latest"
+        network: bridge
+        restart: "no"
+        restart_sec: 5
+        wanted_by: "multi-user.target"
+        volumes: []
+  roles:
+    - role: scroker.home_lab.container_runtime
